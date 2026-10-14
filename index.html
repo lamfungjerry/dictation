@@ -5,6 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>英語讀默溫習系統</title>
+  <!-- 引入外部獨立設定檔 config.js -->
+  <script src="config.js"></script>
   <style>
     :root { --primary: #2563eb; --primary-hover: #1d4ed8; --bg: #f8fafc; --card-bg: #ffffff; --border: #e2e8f0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -110,40 +112,35 @@
     .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
     .toast-message {
-      visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center;
-      border-radius: 8px; padding: 16px; position: fixed; z-index: 100000; left: 50%; bottom: 30px;
-      transform: translateX(-50%); font-size: 15px; display: flex; justify-content: space-between; align-items: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+      visibility: hidden; min-width: 260px; max-width: 92%; background-color: #333; color: #fff; text-align: left;
+      border-radius: 8px; padding: 14px 16px; position: fixed; z-index: 100000; left: 50%; bottom: 30px;
+      transform: translateX(-50%); font-size: 14px; display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25); opacity: 0; transition: opacity 0.3s, bottom 0.3s; word-break: break-word;
     }
     .toast-message.show { visibility: visible; opacity: 1; bottom: 50px; }
     .toast-message.alert { background-color: #dc2626; }
-    .toast-close { cursor: pointer; font-weight: bold; margin-left: 15px; padding: 4px 8px; background: rgba(255,255,255,0.2); border-radius: 4px; }
+    .toast-close { cursor: pointer; font-weight: bold; margin-left: 12px; padding: 4px 8px; background: rgba(255,255,255,0.2); border-radius: 4px; flex-shrink: 0; }
     
     .tab-header { display:flex; border-bottom: 1px solid #cbd5e1; margin-bottom: 15px; }
     .tab-btn { flex:1; text-align:center; padding:10px 4px; cursor:pointer; font-weight:bold; color:#64748b; border-bottom:3px solid transparent; transition:0.3s; position: relative; font-size: 14px;}
     .tab-btn.active { color:#2563eb; border-bottom:3px solid #2563eb; }
 
-    /* 醒目提示徽章 (Badge) 與狀態卡片 */
+    /* 同步分頁標籤紅字徽章 */
     .badge-alert {
       display: none; background: #ef4444; color: #fff; font-size: 11px; font-weight: bold;
       padding: 2px 6px; border-radius: 999px; margin-left: 4px; vertical-align: middle;
-      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4); animation: pulse-badge 1.8s infinite;
-    }
-    @keyframes pulse-badge {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.12); }
-      100% { transform: scale(1); }
-    }
-    .sync-alert-banner {
-      display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #be123c;
-      padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;
-      font-weight: 600; cursor: pointer; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
     }
     .sync-stat-box {
       flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
       padding: 12px; text-align: center;
     }
     .sync-stat-num { font-size: 22px; font-weight: 800; margin: 4px 0; }
+    .sync-error-box {
+      display: none; margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; font-size: 12px;
+      line-height: 1.5; word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -159,21 +156,12 @@
   <div class="card" id="card1">
     <div class="card-header" onclick="toggleCard('card1')">
       <div style="display:flex; flex-direction:column;">
-        <h2>
-          📂 1. 課文庫與匯入
-          <span id="headerSyncBadge" class="badge-alert">!</span>
-        </h2>
+        <h2>📂 1. 課文庫與匯入</h2>
         <span id="cloudUsageText" style="font-size:11px; color:#64748b; margin-top:2px; font-weight:normal;">雲端容量: 載入中...</span>
       </div>
       <span class="card-toggle-icon">▼</span>
     </div>
     <div class="card-body">
-      <!-- 醒目未同步/未清理頂部提示列 -->
-      <div id="syncAlertBanner" class="sync-alert-banner" onclick="switchTab('sync')">
-        <span id="syncAlertText">⚠️ 發現未同步或未清理的音檔快取！</span>
-        <span style="text-decoration: underline;">前往處理 ➔</span>
-      </div>
-
       <div class="tab-header">
         <div id="tabLoad" class="tab-btn active" onclick="switchTab('load')">📂 讀取</div>
         <div id="tabSync" class="tab-btn" onclick="switchTab('sync')">
@@ -216,6 +204,9 @@
           <button id="btnSyncGh" class="btn-action col" style="margin-top:0;" onclick="runGitHubSync()">☁️ 同步至 GitHub</button>
           <button id="btnCleanDrive" class="btn-danger col" style="margin-top:0;" onclick="runDriveClean()">🗑️ 清理已同步快取</button>
         </div>
+
+        <!-- 固定顯示的錯誤訊息框 -->
+        <div id="syncErrorBox" class="sync-error-box"></div>
 
         <div id="syncDetailBox" style="margin-top:12px; font-size:12px; color:#475569; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; max-height:140px; overflow-y:auto; display:none;"></div>
       </div>
@@ -328,13 +319,8 @@
 
 <div id="keyModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 style="margin-top:0; color:#334155;">🔑 API Key 與 GitHub 設定</h3>
-    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">所有金鑰安全儲存在 GAS 雲端屬性中，前端不留存明碼。</p>
-    
-    <div id="gasUrlContainer" style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed #cbd5e1;">
-      <label style="margin-top:0; color:#2563eb;">🔗 GAS 後端 Web App 網址 (GitHub 前端必填)：</label>
-      <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
-    </div>
+    <h3 style="margin-top:0; color:#334155;">🔑 API Key 設定</h3>
+    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">金鑰安全儲存在 GAS 雲端屬性中。連線網址與 GitHub 倉庫由 <code>config.js</code> 自動讀取。</p>
 
     <label>Gemini API Key：</label>
     <div id="geminiKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
@@ -348,24 +334,17 @@
     <div id="azureTtsKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
     <input type="text" id="azureTtsKeyInput" placeholder="輸入 Azure TTS Key" style="margin-bottom:10px; display:none;">
 
-    <hr style="border:none; border-top:1px solid #e2e8f0; margin: 12px 0;">
-    <label style="color:#0f172a;">🐙 GitHub Personal Access Token (需勾選 repo 權限)：</label>
+    <label>🐙 GitHub Personal Access Token (需 repo 權限)：</label>
     <div id="ghTokenStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
     <input type="text" id="ghTokenInput" placeholder="ghp_... 或 github_pat_..." style="margin-bottom:10px; display:none;">
 
-    <div class="row">
-      <div class="col" style="flex:2;">
-        <label style="margin-top:0;">GitHub Repo (帳號/倉庫名)：</label>
-        <input type="text" id="ghRepoInput" placeholder="例如：username/dictation">
-      </div>
-      <div class="col" style="flex:1;">
-        <label style="margin-top:0;">分支 (Branch)：</label>
-        <input type="text" id="ghBranchInput" placeholder="main" value="main">
-      </div>
+    <div style="font-size:12px; color:#64748b; background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0; margin-top:8px;">
+      <div>🔗 <b>目前讀取的 config.js 設定：</b></div>
+      <div id="configPreviewText" style="margin-top:4px; word-break:break-all;">載入中...</div>
     </div>
     
     <div class="row" style="margin-top:20px;">
-      <button class="btn-action col" onclick="saveKeys()">💾 儲存設定</button>
+      <button class="btn-action col" onclick="saveKeys()">💾 儲存金鑰</button>
       <button class="btn-secondary col" onclick="document.getElementById('keyModal').style.display='none'">關閉</button>
     </div>
   </div>
@@ -423,10 +402,13 @@
 </div>
 
 <script>
-  // 若部署在 GitHub Pages，可將你的 GAS Web App 網址貼在下方字串中，或於網頁左上角 🔑 設定
-  const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxXD65cEBUuioQKLSDFb9K6_yCobRej7uKjmkRrKINWRYbbp-vFL2K3NiOUgQvFaLaI/exec"; 
+  // 從外部 config.js 讀取固定設定
+  var APP_CFG = window.APP_CONFIG || {};
+  function getCfgGasUrl() { return (APP_CFG.GAS_URL || "").trim(); }
+  function getCfgRepo() { return (APP_CFG.GITHUB_REPO || "").trim(); }
+  function getCfgBranch() { return (APP_CFG.GITHUB_BRANCH || "main").trim(); }
 
-  // 自動相容層：若在 GitHub Pages 執行，自動將 google.script.run 轉為 fetch POST 呼叫 GAS
+  // 自動相容層：若在 GitHub Pages 執行，自動讀取 config.js 的 GAS_URL 發送請求
   (function setupGasBridge() {
     if (typeof google === 'undefined' || !google.script || !google.script.run) {
       function createRunner(successCb, failureCb) {
@@ -436,9 +418,9 @@
             if (prop === 'withFailureHandler') return function(cb) { return createRunner(successCb, cb); };
             return function() {
               var args = Array.prototype.slice.call(arguments);
-              var gasUrl = localStorage.getItem('dictation_gas_url') || DEFAULT_GAS_URL;
-              if (!gasUrl) {
-                var err = "請先點擊左上角 🔑 設定 GAS 後端網址";
+              var gasUrl = getCfgGasUrl();
+              if (!gasUrl || gasUrl.indexOf("請替換") !== -1) {
+                var err = "請先在 GitHub 的 config.js 中填寫正確的 GAS_URL";
                 if (failureCb) failureCb(err); else showToast(err, true);
                 return;
               }
@@ -474,7 +456,7 @@
   var currentParaIndex = 0;
   var lastParsedText = "";
   var globalAudioCache = {};
-  var githubDirectUrlMap = {}; // 儲存已經在 GitHub 上的音檔直連網址
+  var githubDirectUrlMap = {}; 
   
   var sentenceFetchQueue = []; 
   var wordFetchQueue = []; 
@@ -519,51 +501,60 @@
   });
 
   window.addEventListener('DOMContentLoaded', function() {
-    var savedGasUrl = localStorage.getItem('dictation_gas_url') || DEFAULT_GAS_URL;
-    document.getElementById('gasUrlInput').value = savedGasUrl;
-
     refreshCloudSaves();
     loadModels(); 
     initNativeVoices(); 
     updateGlobalSpeedDisplay();
     loadAppUrlAndQr(); 
-    checkGitHubSyncStatus(false); // 每次進入頁面自動檢查 GitHub 同步與清理狀態
+    checkGitHubSyncStatus(false); 
   });
 
   // ==========================================
   // GitHub 同步與清理前端邏輯
   // ==========================================
+  function showSyncError(errMsg) {
+    var errBox = document.getElementById('syncErrorBox');
+    if (!errMsg) {
+      errBox.style.display = 'none';
+      errBox.textContent = '';
+    } else {
+      errBox.style.display = 'block';
+      errBox.innerHTML = '<b>❌ 錯誤訊息：</b><br>' + errMsg;
+    }
+  }
+
   function checkGitHubSyncStatus(showToastMsg) {
-    if (showToastMsg) showToast('🔍 正在檢查 GitHub 與 Drive 狀態...');
+    if (showToastMsg) {
+      showSyncError(null);
+      showToast('🔍 正在檢查 GitHub 與 Drive 狀態...');
+    }
     google.script.run
       .withSuccessHandler(function(res) {
         updateSyncStatusUI(res);
         if (showToastMsg && res && !res.error) showToast('✅ 狀態檢查完成');
       })
-      .withFailureHandler(function() {})
-      .checkSyncStatus();
+      .withFailureHandler(function(err) {
+        if (showToastMsg) showSyncError(err);
+      })
+      .checkSyncStatus(getCfgRepo(), getCfgBranch());
   }
 
   function updateSyncStatusUI(res) {
     var tabBadge = document.getElementById('tabSyncBadge');
-    var headerBadge = document.getElementById('headerSyncBadge');
-    var banner = document.getElementById('syncAlertBanner');
-    var bannerText = document.getElementById('syncAlertText');
     var repoLabel = document.getElementById('syncRepoLabel');
     var detailBox = document.getElementById('syncDetailBox');
 
     if (!res || !res.configured) {
-      repoLabel.textContent = "GitHub 狀態：尚未設定（請點左上角 🔑 設定）";
+      repoLabel.textContent = "GitHub 狀態：" + (res && res.error ? res.error : "尚未設定");
       document.getElementById('unsyncedCountNum').textContent = "-";
       document.getElementById('cleanableCountNum').textContent = "-";
       tabBadge.style.display = 'none';
-      headerBadge.style.display = 'none';
-      banner.style.display = 'none';
       return;
     }
 
     if (res.error) {
-      repoLabel.textContent = "⚠️ 錯誤：" + res.error;
+      repoLabel.textContent = "⚠️ 檢查發生錯誤";
+      showSyncError(res.error);
       return;
     }
 
@@ -572,84 +563,83 @@
     document.getElementById('cleanableCountNum').textContent = res.cleanableCount;
     document.getElementById('cleanableSizeText').textContent = "可釋放約 " + (res.cleanableKB || 0) + " KB";
 
-    var totalPending = (res.unsyncedCount || 0) + (res.cleanableCount || 0);
-    if (totalPending > 0) {
-      tabBadge.textContent = totalPending;
+    var unsyncedOnly = res.unsyncedCount || 0;
+    if (unsyncedOnly > 0) {
+      tabBadge.textContent = unsyncedOnly;
       tabBadge.style.display = 'inline-block';
-      headerBadge.style.display = 'inline-block';
-      banner.style.display = 'flex';
-      
-      var msgParts = [];
-      if (res.unsyncedCount > 0) msgParts.push(res.unsyncedCount + " 個音檔未同步至 GitHub");
-      if (res.cleanableCount > 0) msgParts.push(res.cleanableCount + " 個 Drive 音檔可清理");
-      bannerText.textContent = "⚠️ 提示：有 " + msgParts.join("、") + "！";
     } else {
       tabBadge.style.display = 'none';
-      headerBadge.style.display = 'none';
-      banner.style.display = 'none';
     }
 
-    // 顯示檔案明細
-    var htmlLines = [];
-    if (res.unsyncedList && res.unsyncedList.length > 0) {
-      htmlLines.push("<b>📦 待同步音檔：</b>");
-      res.unsyncedList.forEach(function(item) {
-        htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
-      });
-    }
-    if (res.cleanableList && res.cleanableList.length > 0) {
-      if (htmlLines.length > 0) htmlLines.push("<br>");
-      htmlLines.push("<b>🧹 已在 GitHub 可清理之 Drive 音檔：</b>");
-      res.cleanableList.forEach(function(item) {
-        htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
-      });
-    }
-    if (htmlLines.length > 0) {
-      detailBox.innerHTML = htmlLines.join("<br>");
-      detailBox.style.display = "block";
-    } else {
-      detailBox.innerHTML = "✅ 目前所有音檔皆已同步且 Google Drive 暫存已清理乾淨！";
-      detailBox.style.display = "block";
+    if (res.unsyncedList || res.cleanableList) {
+      var htmlLines = [];
+      if (res.unsyncedList && res.unsyncedList.length > 0) {
+        htmlLines.push("<b>📦 待同步音檔：</b>");
+        res.unsyncedList.forEach(function(item) {
+          htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
+        });
+      }
+      if (res.cleanableList && res.cleanableList.length > 0) {
+        if (htmlLines.length > 0) htmlLines.push("<br>");
+        htmlLines.push("<b>🧹 已在 GitHub 可清理之 Drive 音檔：</b>");
+        res.cleanableList.forEach(function(item) {
+          htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
+        });
+      }
+      if (htmlLines.length > 0) {
+        detailBox.innerHTML = htmlLines.join("<br>");
+        detailBox.style.display = "block";
+      } else {
+        detailBox.innerHTML = "✅ 目前所有音檔皆已同步且 Google Drive 暫存已清理乾淨！";
+        detailBox.style.display = "block";
+      }
     }
   }
 
   function runGitHubSync() {
     var btn = document.getElementById('btnSyncGh');
     btn.disabled = true;
-    btn.textContent = "☁️ 正在推送至 GitHub...";
-    showToast("正在將 Google Drive 音檔批次 Commit 至 GitHub...");
+    btn.textContent = "☁️ 正在高速併發同步至 GitHub...";
+    showSyncError(null);
+    showToast("正在將 Google Drive 音檔高速打包 Commit 至 GitHub...");
 
     google.script.run
       .withSuccessHandler(function(res) {
         if (!res || !res.success) {
           btn.disabled = false;
           btn.textContent = "☁️ 同步至 GitHub";
-          return showToast("同步失敗：" + (res ? res.error : "未知錯誤"), true);
+          var errMsg = res ? res.error : "未知錯誤";
+          showSyncError(errMsg);
+          return showToast("同步失敗：" + errMsg, true);
         }
         if (res.status) updateSyncStatusUI(res.status);
         
-        // 若超過 25 個檔案，自動接續批次同步
         if (res.remainingCount > 0) {
+          btn.textContent = "☁️ 同步中 (剩餘 " + res.remainingCount + " 個)...";
           showToast("已同步 " + res.syncedCount + " 個，剩餘 " + res.remainingCount + " 個繼續同步中...");
-          runGitHubSync();
+          setTimeout(function() {
+            runGitHubSync();
+          }, 2000);
         } else {
           btn.disabled = false;
           btn.textContent = "☁️ 同步至 GitHub";
-          showToast("🎉 成功同步所有音檔至 GitHub！");
+          showToast("🎉 成功同步 " + res.syncedCount + " 個音檔至 GitHub！");
         }
       })
       .withFailureHandler(function(err) {
         btn.disabled = false;
         btn.textContent = "☁️ 同步至 GitHub";
+        showSyncError(err);
         showToast("連線錯誤：" + err, true);
       })
-      .syncDriveToGitHub();
+      .syncDriveToGitHub(getCfgRepo(), getCfgBranch());
   }
 
   function runDriveClean() {
     var btn = document.getElementById('btnCleanDrive');
     btn.disabled = true;
     btn.textContent = "🗑️ 清理中...";
+    showSyncError(null);
     showToast("正在清理已同步的 Google Drive 音檔...");
 
     google.script.run
@@ -657,7 +647,9 @@
         btn.disabled = false;
         btn.textContent = "🗑️ 清理已同步快取";
         if (!res || !res.success) {
-          return showToast("清理失敗：" + (res ? res.error : "未知錯誤"), true);
+          var errMsg = res ? res.error : "未知錯誤";
+          showSyncError(errMsg);
+          return showToast("清理失敗：" + errMsg, true);
         }
         if (res.status) updateSyncStatusUI(res.status);
         showToast("🗑️ 已安全清理 " + res.deletedCount + " 個 Google Drive 音檔！");
@@ -665,17 +657,18 @@
       .withFailureHandler(function(err) {
         btn.disabled = false;
         btn.textContent = "🗑️ 清理已同步快取";
+        showSyncError(err);
         showToast("連線錯誤：" + err, true);
       })
-      .cleanSyncedDriveFiles();
+      .cleanSyncedDriveFiles(getCfgRepo(), getCfgBranch());
   }
 
   // ==========================================
   // 金鑰與設定管理
   // ==========================================
   function openKeyModal() {
-    var savedGasUrl = localStorage.getItem('dictation_gas_url') || DEFAULT_GAS_URL;
-    document.getElementById('gasUrlInput').value = savedGasUrl;
+    var preview = "Repo: " + (getCfgRepo() || "未設定") + " (" + getCfgBranch() + ")";
+    document.getElementById('configPreviewText').textContent = preview;
 
     google.script.run.withSuccessHandler(function(status) {
       var gmStatus = document.getElementById('geminiKeyStatus');
@@ -697,9 +690,6 @@
       var ghInput = document.getElementById('ghTokenInput');
       if (status.ghTokenSet) { ghStatus.style.display = 'block'; ghInput.style.display = 'none'; }
       else { ghStatus.style.display = 'none'; ghInput.style.display = 'block'; }
-
-      document.getElementById('ghRepoInput').value = status.ghRepo || '';
-      document.getElementById('ghBranchInput').value = status.ghBranch || 'main';
       
       gmStatus.onclick = function() { gmStatus.style.display='none'; gmInput.style.display='block'; gmInput.focus(); };
       gpStatus.onclick = function() { gpStatus.style.display='none'; gpInput.style.display='block'; gpInput.focus(); };
@@ -708,7 +698,6 @@
       
       document.getElementById('keyModal').style.display = 'flex';
     }).withFailureHandler(function() {
-      // 若在 GitHub Pages 尚未設定 GAS 網址，直接開啟視窗讓使用者輸入
       document.getElementById('geminiKeyInput').style.display = 'block';
       document.getElementById('gcpTtsKeyInput').style.display = 'block';
       document.getElementById('azureTtsKeyInput').style.display = 'block';
@@ -718,15 +707,10 @@
   }
 
   function saveKeys() {
-    var gasUrl = document.getElementById('gasUrlInput').value.trim();
-    if (gasUrl) localStorage.setItem('dictation_gas_url', gasUrl);
-
     var gKey = document.getElementById('geminiKeyInput').value.replace(/[\s"']/g, '');
     var gcpKey = document.getElementById('gcpTtsKeyInput').value.replace(/[\s"']/g, '');
     var azKey = document.getElementById('azureTtsKeyInput').value.replace(/[\s"']/g, '');
     var ghToken = document.getElementById('ghTokenInput').value.replace(/[\s"']/g, '');
-    var ghRepo = document.getElementById('ghRepoInput').value.trim();
-    var ghBranch = document.getElementById('ghBranchInput').value.trim() || 'main';
     
     if (gKey && ((!gKey.startsWith('AIzaSy') && !gKey.startsWith('AQ.')) || gKey.length < 35)) return showToast('Gemini Key 格式錯誤', true);
     if (gcpKey && (!gcpKey.startsWith('AIzaSy') || gcpKey.length < 35)) return showToast('Google TTS Key 格式錯誤', true);
@@ -735,11 +719,11 @@
     document.getElementById('keyModal').style.display = 'none';
     showToast('儲存中...');
     google.script.run.withSuccessHandler(function() {
-      showToast('🔑 設定已永久儲存');
+      showToast('🔑 金鑰已永久儲存');
       refreshCloudSaves();
       loadModels(); 
       checkGitHubSyncStatus(false);
-    }).saveApiKeys(gKey, gcpKey, azKey, ghToken, ghRepo, ghBranch);
+    }).saveApiKeys(gKey, gcpKey, azKey, ghToken, getCfgRepo(), getCfgBranch());
   }
 
   function switchTab(tabId) {
@@ -770,9 +754,11 @@
     toast.classList.add('show');
     
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function() {
-      toast.classList.remove('show');
-    }, 3000);
+    if (!isAlert) {
+      toastTimer = setTimeout(function() {
+        toast.classList.remove('show');
+      }, 3000);
+    }
   }
 
   function hideToast() {
@@ -938,12 +924,12 @@
   function deleteSelectedSave() {
     var id = document.getElementById('cloudSaveSelect').value;
     if(!id) return;
-    showToast('刪除中...', true);
+    showToast('刪除中...');
     google.script.run
       .withSuccessHandler(function(res) {
         document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
         refreshCloudSaves();
-        showToast('🗑️ 紀錄已刪除', true);
+        showToast('🗑️ 紀錄已刪除');
       })
       .deleteCloudSave(id);
   }
@@ -1023,7 +1009,7 @@
       })
       .withFailureHandler(function(err) {
         loaded = true;
-        sel.innerHTML = '<option value="">⚠️ 未能載入模型 (請設定 GAS 網址與 Key)</option>';
+        sel.innerHTML = '<option value="">⚠️ 未能載入模型 (請檢查 config.js 與 Key)</option>';
       })
       .getAvailableGeminiModels();
       
@@ -1191,7 +1177,6 @@
     }
   }
 
-  // 先檢查 GitHub 上是否已經有對應的 MP3，若無才排入 Google Drive / API 下載佇列
   function checkAndDownloadAudio() {
     var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
     var voiceKey = vConfig[0];
@@ -1209,7 +1194,6 @@
       msts.forEach(function(w) { if (allTexts.indexOf(w) === -1) allTexts.push(w); });
     }
 
-    // 先向後端查詢哪些音檔已經存在於 GitHub
     google.script.run
       .withSuccessHandler(function(ghRes) {
         if (ghRes && ghRes.enabled && ghRes.urls) {
@@ -1223,7 +1207,7 @@
       .withFailureHandler(function() {
         enqueueMissingAudio(voiceKey, langCode);
       })
-      .getLessonGitHubCacheMap(saveTitle, voiceKey, allTexts);
+      .getLessonGitHubCacheMap(saveTitle, voiceKey, allTexts, getCfgRepo(), getCfgBranch());
   }
 
   function enqueueMissingAudio(voiceKey, langCode) {
@@ -1273,7 +1257,6 @@
       isDownloading = false;
       updateDownloadUI(true);
       try { localStorage.setItem('dictation_audio_cache', JSON.stringify(globalAudioCache)); } catch(e) {}
-      // 下載完成後自動檢查一次 GitHub 同步狀態，更新醒目紅點提示
       checkGitHubSyncStatus(false);
       return;
     }
@@ -1629,9 +1612,6 @@
     }
   }
 
-  // ==========================================
-  // 播放控制 (支援 GitHub 直連與 iOS 連續播放)
-  // ==========================================
   function stopAudio() {
     if(window.speechSynthesis) window.speechSynthesis.cancel();
     if(sharedAudio) {
@@ -1792,7 +1772,6 @@
   }
 
   function loadAppUrlAndQr() {
-    // 若在 GitHub Pages 上執行，QR Code 直接顯示當前的 GitHub Pages 網址
     if (window.location.hostname.indexOf('github.io') !== -1) {
       renderQrCode(window.location.href);
       return;
