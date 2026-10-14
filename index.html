@@ -32,7 +32,7 @@
       <div class="tab-header">
         <div id="tabLoad" class="tab-btn active" onclick="switchTab('load')">📂 讀取</div>
         <div id="tabSync" class="tab-btn" onclick="switchTab('sync')">
-          <span id="tabSyncIcon">🔄</span> 同步<span id="tabSyncBadge" class="badge-alert">0</span>
+          <span id="tabSyncIcon" class="hourglass-spin">⏳</span> 同步<span id="tabSyncBadge" class="badge-alert">0</span>
         </div>
         <div id="tabNew" class="tab-btn" onclick="switchTab('new')">➕ 新增</div>
       </div>
@@ -368,7 +368,7 @@
   });
 
   // ==========================================
-  // GitHub 同步與清理前端邏輯
+  // GitHub 同步與清理前端邏輯 (完全移除 🔄，只使用 ⏳ 與狀態 icon)
   // ==========================================
   function setSyncTabIcon(state) {
     var iconEl = document.getElementById('tabSyncIcon');
@@ -399,23 +399,23 @@
     }
   }
 
-  function checkGitHubSyncStatus(showToastMsg) {
+  function checkGitHubSyncStatus(forceRescan) {
     setSyncTabIcon('loading');
     document.getElementById('syncRepoLabel').textContent = '檢查中...';
-    if (showToastMsg) {
+    if (forceRescan) {
       showSyncError(null);
       showToast('🔍 檢查中...');
     }
     google.script.run
       .withSuccessHandler(function(res) {
         updateSyncStatusUI(res);
-        if (showToastMsg && res && !res.error) showToast('✅ 檢查完成');
+        if (forceRescan && res && !res.error) showToast('✅ 檢查完成');
       })
       .withFailureHandler(function(err) {
         setSyncTabIcon('error');
-        if (showToastMsg) showSyncError(err);
+        if (forceRescan) showSyncError(err);
       })
-      .checkSyncStatus(getCfgRepo(), getCfgBranch());
+      .checkSyncStatus(getCfgRepo(), getCfgBranch(), !!forceRescan);
   }
 
   function updateSyncStatusUI(res) {
@@ -613,6 +613,7 @@
     }).saveApiKeys(gKey, gcpKey, azKey, ghToken, getCfgRepo(), getCfgBranch());
   }
 
+  // 點擊分頁純粹切換畫面，不再重複觸發自動檢查
   function switchTab(tabId) {
     var tabs = ['load', 'sync', 'new'];
     var panels = { load: 'panelLoad', sync: 'panelSync', new: 'panelNew' };
