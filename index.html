@@ -108,6 +108,12 @@
     }
     .hourglass-spin { animation: hourglass-spin 1.5s infinite ease-in-out; display: inline-block; }
 
+    @keyframes spin-continuous {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .icon-spin { animation: spin-continuous 1s linear infinite; display: inline-block; }
+
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(2px);}
     .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
@@ -149,7 +155,7 @@
   <header>
     <button class="key-btn" onclick="openKeyModal()">🔑</button>
     <h1 style="font-size:22px; margin-bottom:4px;">📖 英語讀默溫習系統</h1>
-    <p style="font-size:13px; color:#64748b;">支援 GitHub 極速快取、Drive 同步與盲聽</p>
+    <p style="font-size:13px; color:#64748b;">支援 GitHub 快取、Drive 同步與盲聽</p>
     <button class="settings-btn" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
   </header>
 
@@ -157,7 +163,7 @@
     <div class="card-header" onclick="toggleCard('card1')">
       <div style="display:flex; flex-direction:column;">
         <h2>📂 1. 課文庫與匯入</h2>
-        <span id="cloudUsageText" style="font-size:11px; color:#64748b; margin-top:2px; font-weight:normal;">雲端容量: 載入中...</span>
+        <span id="cloudUsageText" style="font-size:11px; color:#64748b; margin-top:2px; font-weight:normal;">容量: 載入中...</span>
       </div>
       <span class="card-toggle-icon">▼</span>
     </div>
@@ -165,16 +171,16 @@
       <div class="tab-header">
         <div id="tabLoad" class="tab-btn active" onclick="switchTab('load')">📂 讀取</div>
         <div id="tabSync" class="tab-btn" onclick="switchTab('sync')">
-          🔄 同步<span id="tabSyncBadge" class="badge-alert">0</span>
+          <span id="tabSyncIcon">🔄</span> 同步<span id="tabSyncBadge" class="badge-alert">0</span>
         </div>
         <div id="tabNew" class="tab-btn" onclick="switchTab('new')">➕ 新增</div>
       </div>
 
       <!-- 1. 讀取分頁 -->
       <div id="panelLoad">
-        <label style="margin-top:0;">選擇已儲存課文：</label>
+        <label style="margin-top:0;">已儲存課文：</label>
         <div class="row">
-          <select id="cloudSaveSelect" class="col"><option value="">載入清單中...</option></select>
+          <select id="cloudSaveSelect" class="col"><option value="">載入中...</option></select>
           <button class="btn-secondary" style="width:auto; margin:0;" onclick="loadSelectedSave()">讀取</button>
           <button class="btn-danger" style="width:auto; margin:0;" onclick="deleteSelectedSave()">刪除</button>
         </div>
@@ -183,54 +189,52 @@
       <!-- 2. 同步與清理分頁 -->
       <div id="panelSync" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span id="syncRepoLabel" style="font-size:12px; color:#64748b; font-weight:600;">GitHub 狀態：檢查中...</span>
-          <button class="btn-secondary" style="width:auto; margin:0; padding:4px 10px; font-size:12px;" onclick="checkGitHubSyncStatus(true)">🔍 重新檢查</button>
+          <span id="syncRepoLabel" style="font-size:12px; color:#64748b; font-weight:600;">檢查中...</span>
+          <button class="btn-secondary" style="width:auto; margin:0; padding:4px 10px; font-size:12px;" onclick="checkGitHubSyncStatus(true)">🔍 檢查</button>
         </div>
 
         <div class="row" style="margin-bottom:12px;">
           <div class="sync-stat-box" style="border-color:#fde68a; background:#fffbeb;">
-            <div style="font-size:12px; color:#b45309; font-weight:bold;">📦 待同步至 GitHub</div>
+            <div style="font-size:12px; color:#b45309; font-weight:bold;">📦 待同步</div>
             <div id="unsyncedCountNum" class="sync-stat-num" style="color:#d97706;">-</div>
-            <div style="font-size:11px; color:#92400e;">位於 Drive 但 GitHub 尚無</div>
+            <div style="font-size:11px; color:#92400e;">未上載 GitHub</div>
           </div>
           <div class="sync-stat-box" style="border-color:#ddd6fe; background:#f5f3ff;">
-            <div style="font-size:12px; color:#6d28d9; font-weight:bold;">🧹 已同步可清理</div>
+            <div style="font-size:12px; color:#6d28d9; font-weight:bold;">🧹 可清理</div>
             <div id="cleanableCountNum" class="sync-stat-num" style="color:#7c3aed;">-</div>
-            <div id="cleanableSizeText" style="font-size:11px; color:#5b21b6;">可釋放 Drive 空間</div>
+            <div id="cleanableSizeText" style="font-size:11px; color:#5b21b6;">Drive 暫存</div>
           </div>
         </div>
 
         <div class="row">
-          <button id="btnSyncGh" class="btn-action col" style="margin-top:0;" onclick="runGitHubSync()">☁️ 同步至 GitHub</button>
-          <button id="btnCleanDrive" class="btn-danger col" style="margin-top:0;" onclick="runDriveClean()">🗑️ 清理已同步快取</button>
+          <button id="btnSyncGh" class="btn-action col" style="margin-top:0;" onclick="runGitHubSync()" disabled>☁️ 同步</button>
+          <button id="btnCleanDrive" class="btn-danger col" style="margin-top:0;" onclick="runDriveClean()" disabled>🗑️ 清理</button>
         </div>
 
-        <!-- 固定顯示的錯誤訊息框 -->
         <div id="syncErrorBox" class="sync-error-box"></div>
-
-        <div id="syncDetailBox" style="margin-top:12px; font-size:12px; color:#475569; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; max-height:140px; overflow-y:auto; display:none;"></div>
+        <div id="syncDetailBox" style="margin-top:12px; font-size:13px; color:#475569; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center; display:none;"></div>
       </div>
 
       <!-- 3. 新增分頁 -->
       <div id="panelNew" style="display:none;">
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:15px;">
-          <label style="margin-top:0;">🔍 智能 OCR 匯入 (自動填寫標題與分段)：</label>
+          <label style="margin-top:0;">🔍 OCR 圖片提取：</label>
           <select id="modelSelect" style="margin-bottom:8px;"><option value="">載入中...</option></select>
           <div class="row">
             <input type="file" id="imageUpload" accept="image/*" class="col" style="padding:6px; font-size:13px;">
-            <button id="ocrBtn" onclick="runOcr()" style="width:auto; margin:0; padding:6px 12px; font-size:14px;">提取文字</button>
+            <button id="ocrBtn" onclick="runOcr()" style="width:auto; margin:0; padding:6px 12px; font-size:14px;">提取</button>
           </div>
           <div id="ocrStatus" style="font-size: 12px; color: #2563eb; margin-top: 4px;"></div>
         </div>
         
         <label>課文標題：</label>
-        <input type="text" id="saveTitle" placeholder="例如：Chapter 1 Dictation" oninput="markDirty()">
+        <input type="text" id="saveTitle" placeholder="例如：Chapter 1" oninput="markDirty()">
         
-        <label>課文內容 (空行自動分段)：</label>
+        <label>課文內容 (空行分段)：</label>
         <textarea id="textContent" oninput="markDirty()" placeholder="請貼上或辨識課文..."></textarea>
         
         <div class="row" style="margin-top:8px;">
-          <button class="btn-warning col" id="mainActionBtn" onclick="breakdownTextAndDownload()">📝 儲存並拆解下載</button>
+          <button class="btn-warning col" id="mainActionBtn" onclick="breakdownTextAndDownload()">📝 儲存並下載</button>
           <button class="btn-secondary" style="width:auto;" onclick="clearText()">清空</button>
         </div>
       </div>
@@ -255,25 +259,25 @@
       </div>
       
       <div class="row">
-        <button onclick="startContinuousPlay(false)" class="col" style="background:#0284c7; margin-top:0;">▶️ 全段連續朗讀</button>
-        <button onclick="stopAudio()" class="btn-secondary col" style="margin-top:0;">⏹️ 停止發音</button>
+        <button onclick="startContinuousPlay(false)" class="col" style="background:#0284c7; margin-top:0;">▶️ 全段連播</button>
+        <button onclick="stopAudio()" class="btn-secondary col" style="margin-top:0;">⏹️ 停止</button>
       </div>
 
       <div class="dictation-panel">
         <div id="paragraphSelectorContainer" style="display:none; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
-          <label style="margin-top:0;">📚 段落選擇：</label>
+          <label style="margin-top:0;">📚 段落：</label>
           <select id="paragraphSelect" onchange="changeParagraph()" style="margin-top:4px;"></select>
         </div>
 
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-          <h3 style="font-size:15px; color:#b45309; margin:0;">✍️ 逐句手動讀默</h3>
+          <h3 style="font-size:15px; color:#b45309; margin:0;">✍️ 逐句讀默</h3>
           <label style="display:inline-flex; align-items:center; cursor:pointer; font-weight:normal; color:#475569; margin:0;">
             <input type="checkbox" id="hideTextToggle" onchange="toggleTextVisibility('dictationList', 'hideTextToggle')" style="width:auto; margin:0 6px 0 0;">盲聽
           </label>
         </div>
 
         <div id="dictationList" style="margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; min-height: 50px;">
-          <div style="text-align:center; color:#94a3b8; padding: 10px;">請先在第1區匯入或讀取課文</div>
+          <div style="text-align:center; color:#94a3b8; padding: 10px;">請先讀取或新增課文</div>
         </div>
       </div>
     </div>
@@ -286,8 +290,8 @@
     </div>
     <div class="card-body">
       <div class="row" style="margin-bottom: 12px;">
-        <button onclick="startContinuousPlay(true)" class="col" style="background:#0284c7; margin-top:0;">▶️ 生字連續朗讀</button>
-        <button onclick="stopAudio()" class="btn-secondary col" style="margin-top:0;">⏹️ 停止發音</button>
+        <button onclick="startContinuousPlay(true)" class="col" style="background:#0284c7; margin-top:0;">▶️ 生字連播</button>
+        <button onclick="stopAudio()" class="btn-secondary col" style="margin-top:0;">⏹️ 停止</button>
       </div>
 
       <div class="dictation-panel" style="background:#f0fdf4; border-color:#86efac;">
@@ -304,14 +308,14 @@
         </div>
 
         <div id="mistakeList" style="margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; min-height: 50px;">
-          <div style="text-align:center; color:#94a3b8; padding: 10px;">請先在第2區點字標記為紅色</div>
+          <div style="text-align:center; color:#94a3b8; padding: 10px;">請先在第2區點字標記</div>
         </div>
       </div>
     </div>
   </div>
 
   <div class="card" style="text-align: center; border:none; box-shadow:none; background:transparent;">
-    <h2 style="font-size:14px; color:#64748b;">📱 手機掃描進入</h2>
+    <h2 style="font-size:14px; color:#64748b;">📱 手機掃描</h2>
     <img id="qrImg" width="150" height="150" src="" style="margin-top:5px; border-radius:8px; display:none;">
     <div id="urlText" style="font-size:12px; color:#64748b; margin-top:8px; word-break:break-all; display:none;"></div>
   </div>
@@ -319,32 +323,26 @@
 
 <div id="keyModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 style="margin-top:0; color:#334155;">🔑 API Key 設定</h3>
-    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">金鑰安全儲存在 GAS 雲端屬性中。連線網址與 GitHub 倉庫由 <code>config.js</code> 自動讀取。</p>
+    <h3 style="margin-top:0; margin-bottom:12px; color:#334155;">🔑 API Key 設定</h3>
 
     <label>Gemini API Key：</label>
     <div id="geminiKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
-    <input type="text" id="geminiKeyInput" placeholder="輸入 Gemini Key (AIzaSy 或 AQ.)" style="margin-bottom:10px; display:none;">
+    <input type="text" id="geminiKeyInput" placeholder="AIzaSy... 或 AQ..." style="margin-bottom:10px; display:none;">
     
     <label>Google Cloud TTS Key：</label>
     <div id="gcpTtsKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
-    <input type="text" id="gcpTtsKeyInput" placeholder="輸入 Google TTS Key (AIzaSy...)" style="margin-bottom:10px; display:none;">
+    <input type="text" id="gcpTtsKeyInput" placeholder="AIzaSy..." style="margin-bottom:10px; display:none;">
     
     <label>Microsoft Azure TTS Key：</label>
     <div id="azureTtsKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
-    <input type="text" id="azureTtsKeyInput" placeholder="輸入 Azure TTS Key" style="margin-bottom:10px; display:none;">
+    <input type="text" id="azureTtsKeyInput" placeholder="輸入 Azure Key" style="margin-bottom:10px; display:none;">
 
-    <label>🐙 GitHub Personal Access Token (需 repo 權限)：</label>
+    <label>GitHub Token (需 repo 權限)：</label>
     <div id="ghTokenStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
     <input type="text" id="ghTokenInput" placeholder="ghp_... 或 github_pat_..." style="margin-bottom:10px; display:none;">
-
-    <div style="font-size:12px; color:#64748b; background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0; margin-top:8px;">
-      <div>🔗 <b>目前讀取的 config.js 設定：</b></div>
-      <div id="configPreviewText" style="margin-top:4px; word-break:break-all;">載入中...</div>
-    </div>
     
-    <div class="row" style="margin-top:20px;">
-      <button class="btn-action col" onclick="saveKeys()">💾 儲存金鑰</button>
+    <div class="row" style="margin-top:16px;">
+      <button class="btn-action col" onclick="saveKeys()">💾 儲存</button>
       <button class="btn-secondary col" onclick="document.getElementById('keyModal').style.display='none'">關閉</button>
     </div>
   </div>
@@ -357,14 +355,13 @@
 
 <div id="settingsModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 style="margin-top:0; color:#334155;">⚙️ 發音款式設定</h3>
-    <p style="font-size:12px; color:#64748b; margin-bottom:10px;">系統將根據所選模型自動切換 Azure 或 Google 的服務。</p>
+    <h3 style="margin-top:0; margin-bottom:10px; color:#334155;">⚙️ 發音設定</h3>
     <select id="googleVoiceSelect" onchange="handleVoiceChange()">
       <optgroup label="🇭🇰 港澳口音 (Azure Neural)">
         <option value="en-HK-YanNeural,en-HK">港式女聲 (YanNeural)</option>
         <option value="en-HK-SamNeural,en-HK">港式男聲 (SamNeural)</option>
       </optgroup>
-      <optgroup label="🇺🇸 新一代高擬真 (Chirp 3 HD)">
+      <optgroup label="🇺🇸 美式發音 (Chirp 3 HD)">
         <option value="en-US-Chirp3-HD-Aoede,en-US">美式女聲 (Aoede)</option>
         <option value="en-US-Chirp3-HD-Charon,en-US">美式男聲 (Charon)</option>
         <option value="en-US-Chirp3-HD-Fenrir,en-US">美式男聲 (Fenrir)</option>
@@ -373,7 +370,7 @@
         <option value="en-US-Chirp3-HD-Zeus,en-US">美式男聲 (Zeus)</option>
       </optgroup>
     </select>
-    <button class="btn-secondary" onclick="document.getElementById('settingsModal').style.display='none'" style="margin-top:20px;">完成並關閉</button>
+    <button class="btn-secondary" onclick="document.getElementById('settingsModal').style.display='none'" style="margin-top:16px;">關閉</button>
   </div>
 </div>
 
@@ -420,7 +417,7 @@
               var args = Array.prototype.slice.call(arguments);
               var gasUrl = getCfgGasUrl();
               if (!gasUrl || gasUrl.indexOf("請替換") !== -1) {
-                var err = "請先在 GitHub 的 config.js 中填寫正確的 GAS_URL";
+                var err = "請先檢查 config.js 設定";
                 if (failureCb) failureCb(err); else showToast(err, true);
                 return;
               }
@@ -512,6 +509,24 @@
   // ==========================================
   // GitHub 同步與清理前端邏輯
   // ==========================================
+  function setSyncTabIcon(state) {
+    var iconEl = document.getElementById('tabSyncIcon');
+    if (!iconEl) return;
+    iconEl.className = '';
+    if (state === 'loading') {
+      iconEl.textContent = '🔄';
+      iconEl.className = 'icon-spin';
+    } else if (state === 'unsynced') {
+      iconEl.textContent = '☁️';
+    } else if (state === 'cleanable') {
+      iconEl.textContent = '🧹';
+    } else if (state === 'ok') {
+      iconEl.textContent = '✅';
+    } else {
+      iconEl.textContent = '⚠️';
+    }
+  }
+
   function showSyncError(errMsg) {
     var errBox = document.getElementById('syncErrorBox');
     if (!errMsg) {
@@ -519,21 +534,24 @@
       errBox.textContent = '';
     } else {
       errBox.style.display = 'block';
-      errBox.innerHTML = '<b>❌ 錯誤訊息：</b><br>' + errMsg;
+      errBox.innerHTML = '<b>❌ 錯誤：</b>' + errMsg;
     }
   }
 
   function checkGitHubSyncStatus(showToastMsg) {
+    setSyncTabIcon('loading');
+    document.getElementById('syncRepoLabel').textContent = '檢查中...';
     if (showToastMsg) {
       showSyncError(null);
-      showToast('🔍 正在檢查 GitHub 與 Drive 狀態...');
+      showToast('🔍 檢查中...');
     }
     google.script.run
       .withSuccessHandler(function(res) {
         updateSyncStatusUI(res);
-        if (showToastMsg && res && !res.error) showToast('✅ 狀態檢查完成');
+        if (showToastMsg && res && !res.error) showToast('✅ 檢查完成');
       })
       .withFailureHandler(function(err) {
+        setSyncTabIcon('error');
         if (showToastMsg) showSyncError(err);
       })
       .checkSyncStatus(getCfgRepo(), getCfgBranch());
@@ -543,71 +561,77 @@
     var tabBadge = document.getElementById('tabSyncBadge');
     var repoLabel = document.getElementById('syncRepoLabel');
     var detailBox = document.getElementById('syncDetailBox');
+    var btnSync = document.getElementById('btnSyncGh');
+    var btnClean = document.getElementById('btnCleanDrive');
 
     if (!res || !res.configured) {
-      repoLabel.textContent = "GitHub 狀態：" + (res && res.error ? res.error : "尚未設定");
+      setSyncTabIcon('error');
+      repoLabel.textContent = "未設定 GitHub";
       document.getElementById('unsyncedCountNum').textContent = "-";
       document.getElementById('cleanableCountNum').textContent = "-";
       tabBadge.style.display = 'none';
+      btnSync.disabled = true;
+      btnClean.disabled = true;
       return;
     }
 
     if (res.error) {
-      repoLabel.textContent = "⚠️ 檢查發生錯誤";
+      setSyncTabIcon('error');
+      repoLabel.textContent = "⚠️ 檢查錯誤";
       showSyncError(res.error);
+      btnSync.disabled = true;
+      btnClean.disabled = true;
       return;
     }
 
-    repoLabel.textContent = "🐙 倉庫：" + res.repo + " (" + res.branch + ")";
-    document.getElementById('unsyncedCountNum').textContent = res.unsyncedCount;
-    document.getElementById('cleanableCountNum').textContent = res.cleanableCount;
-    document.getElementById('cleanableSizeText').textContent = "可釋放約 " + (res.cleanableKB || 0) + " KB";
+    var unsynced = res.unsyncedCount || 0;
+    var cleanable = res.cleanableCount || 0;
 
-    var unsyncedOnly = res.unsyncedCount || 0;
-    if (unsyncedOnly > 0) {
-      tabBadge.textContent = unsyncedOnly;
+    repoLabel.textContent = "🐙 " + res.repo;
+    document.getElementById('unsyncedCountNum').textContent = unsynced;
+    document.getElementById('cleanableCountNum').textContent = cleanable;
+    document.getElementById('cleanableSizeText').textContent = "約 " + (res.cleanableKB || 0) + " KB";
+
+    // 0 個音檔時鎖定按鈕不讓點擊
+    btnSync.disabled = (unsynced === 0);
+    btnClean.disabled = (cleanable === 0);
+
+    // 紅字只計算「未同步」數量
+    if (unsynced > 0) {
+      tabBadge.textContent = unsynced;
       tabBadge.style.display = 'inline-block';
     } else {
       tabBadge.style.display = 'none';
     }
 
-    if (res.unsyncedList || res.cleanableList) {
-      var htmlLines = [];
-      if (res.unsyncedList && res.unsyncedList.length > 0) {
-        htmlLines.push("<b>📦 待同步音檔：</b>");
-        res.unsyncedList.forEach(function(item) {
-          htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
-        });
-      }
-      if (res.cleanableList && res.cleanableList.length > 0) {
-        if (htmlLines.length > 0) htmlLines.push("<br>");
-        htmlLines.push("<b>🧹 已在 GitHub 可清理之 Drive 音檔：</b>");
-        res.cleanableList.forEach(function(item) {
-          htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
-        });
-      }
-      if (htmlLines.length > 0) {
-        detailBox.innerHTML = htmlLines.join("<br>");
-        detailBox.style.display = "block";
-      } else {
-        detailBox.innerHTML = "✅ 目前所有音檔皆已同步且 Google Drive 暫存已清理乾淨！";
-        detailBox.style.display = "block";
-      }
+    // 更新同步 Tab 圖示與簡短狀態文字
+    detailBox.style.display = "block";
+    if (unsynced > 0) {
+      setSyncTabIcon('unsynced');
+      detailBox.textContent = "☁️ 尚有 " + unsynced + " 個音檔未同步";
+    } else if (cleanable > 0) {
+      setSyncTabIcon('cleanable');
+      detailBox.textContent = "🧹 已全部同步，可清理 " + cleanable + " 個暫存檔";
+    } else {
+      setSyncTabIcon('ok');
+      detailBox.textContent = "✅ 已全部同步及清理";
     }
   }
 
   function runGitHubSync() {
     var btn = document.getElementById('btnSyncGh');
     btn.disabled = true;
-    btn.textContent = "☁️ 正在高速併發同步至 GitHub...";
+    btn.textContent = "同步中";
+    setSyncTabIcon('loading');
     showSyncError(null);
-    showToast("正在將 Google Drive 音檔高速打包 Commit 至 GitHub...");
+    showToast("☁️ 同步中...");
 
     google.script.run
       .withSuccessHandler(function(res) {
         if (!res || !res.success) {
           btn.disabled = false;
-          btn.textContent = "☁️ 同步至 GitHub";
+          btn.textContent = "☁️ 同步";
+          setSyncTabIcon('error');
           var errMsg = res ? res.error : "未知錯誤";
           showSyncError(errMsg);
           return showToast("同步失敗：" + errMsg, true);
@@ -615,20 +639,22 @@
         if (res.status) updateSyncStatusUI(res.status);
         
         if (res.remainingCount > 0) {
-          btn.textContent = "☁️ 同步中 (剩餘 " + res.remainingCount + " 個)...";
-          showToast("已同步 " + res.syncedCount + " 個，剩餘 " + res.remainingCount + " 個繼續同步中...");
+          btn.disabled = true;
+          btn.textContent = "同步中";
+          setSyncTabIcon('loading');
+          showToast("已同步 " + res.syncedCount + " 個，剩餘 " + res.remainingCount + " 個...");
           setTimeout(function() {
             runGitHubSync();
           }, 2000);
         } else {
-          btn.disabled = false;
-          btn.textContent = "☁️ 同步至 GitHub";
-          showToast("🎉 成功同步 " + res.syncedCount + " 個音檔至 GitHub！");
+          btn.textContent = "☁️ 同步";
+          showToast("🎉 已同步 " + res.syncedCount + " 個音檔！");
         }
       })
       .withFailureHandler(function(err) {
         btn.disabled = false;
-        btn.textContent = "☁️ 同步至 GitHub";
+        btn.textContent = "☁️ 同步";
+        setSyncTabIcon('error');
         showSyncError(err);
         showToast("連線錯誤：" + err, true);
       })
@@ -638,25 +664,28 @@
   function runDriveClean() {
     var btn = document.getElementById('btnCleanDrive');
     btn.disabled = true;
-    btn.textContent = "🗑️ 清理中...";
+    btn.textContent = "清理中";
+    setSyncTabIcon('loading');
     showSyncError(null);
-    showToast("正在清理已同步的 Google Drive 音檔...");
+    showToast("🗑️ 清理中...");
 
     google.script.run
       .withSuccessHandler(function(res) {
-        btn.disabled = false;
-        btn.textContent = "🗑️ 清理已同步快取";
+        btn.textContent = "🗑️ 清理";
         if (!res || !res.success) {
+          btn.disabled = false;
+          setSyncTabIcon('error');
           var errMsg = res ? res.error : "未知錯誤";
           showSyncError(errMsg);
           return showToast("清理失敗：" + errMsg, true);
         }
         if (res.status) updateSyncStatusUI(res.status);
-        showToast("🗑️ 已安全清理 " + res.deletedCount + " 個 Google Drive 音檔！");
+        showToast("🗑️ 已清理 " + res.deletedCount + " 個暫存檔！");
       })
       .withFailureHandler(function(err) {
         btn.disabled = false;
-        btn.textContent = "🗑️ 清理已同步快取";
+        btn.textContent = "🗑️ 清理";
+        setSyncTabIcon('error');
         showSyncError(err);
         showToast("連線錯誤：" + err, true);
       })
@@ -667,9 +696,6 @@
   // 金鑰與設定管理
   // ==========================================
   function openKeyModal() {
-    var preview = "Repo: " + (getCfgRepo() || "未設定") + " (" + getCfgBranch() + ")";
-    document.getElementById('configPreviewText').textContent = preview;
-
     google.script.run.withSuccessHandler(function(status) {
       var gmStatus = document.getElementById('geminiKeyStatus');
       var gmInput = document.getElementById('geminiKeyInput');
@@ -719,7 +745,7 @@
     document.getElementById('keyModal').style.display = 'none';
     showToast('儲存中...');
     google.script.run.withSuccessHandler(function() {
-      showToast('🔑 金鑰已永久儲存');
+      showToast('🔑 已儲存');
       refreshCloudSaves();
       loadModels(); 
       checkGitHubSyncStatus(false);
@@ -869,13 +895,13 @@
 
   function refreshCloudSaves() {
     var sel = document.getElementById('cloudSaveSelect');
-    sel.innerHTML = '<option value="">載入清單中...</option>';
+    sel.innerHTML = '<option value="">載入中...</option>';
     google.script.run
       .withSuccessHandler(function(res) {
-        document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
+        document.getElementById('cloudUsageText').textContent = '容量: ' + res.usageKB + ' / 500 KB (' + res.usagePercent + '%)';
         sel.innerHTML = '';
         if(res.saves.length === 0) {
-          sel.innerHTML = '<option value="">(目前無雲端紀錄)</option>';
+          sel.innerHTML = '<option value="">(無紀錄)</option>';
         } else {
           res.saves.forEach(function(s) {
             var dateStr = new Date(s.date).toLocaleDateString('zh-HK');
@@ -890,7 +916,7 @@
 
   function loadSelectedSave() {
     var id = document.getElementById('cloudSaveSelect').value;
-    if(!id) return showToast('請先選擇一份紀錄', true);
+    if(!id) return showToast('請先選擇課文', true);
     google.script.run
       .withSuccessHandler(function(data) {
         if(!data) return showToast('讀取失敗', true);
@@ -916,7 +942,7 @@
         checkAndDownloadAudio(); 
         closeTopCards(); 
         document.getElementById('mainActionBtn').style.display = 'none'; 
-        showToast('📂 已成功載入課文');
+        showToast('📂 已載入');
       })
       .loadCloudSave(id);
   }
@@ -927,9 +953,9 @@
     showToast('刪除中...');
     google.script.run
       .withSuccessHandler(function(res) {
-        document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
+        document.getElementById('cloudUsageText').textContent = '容量: ' + res.usageKB + ' / 500 KB (' + res.usagePercent + '%)';
         refreshCloudSaves();
-        showToast('🗑️ 紀錄已刪除');
+        showToast('🗑️ 已刪除');
       })
       .deleteCloudSave(id);
   }
@@ -942,7 +968,7 @@
     google.script.run
       .withSuccessHandler(function(res) {
         if(res && res.saves) {
-          document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
+          document.getElementById('cloudUsageText').textContent = '容量: ' + res.usageKB + ' / 500 KB (' + res.usagePercent + '%)';
           if (res.id) currentSaveId = res.id;
           
           var sel = document.getElementById('cloudSaveSelect');
@@ -982,7 +1008,7 @@
     lastPlayedMistakeRowId = null;
     absoluteLastPlayedRowId = null;
     document.getElementById('paragraphSelectorContainer').style.display = 'none';
-    document.getElementById('dictationList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">內容已清空</div>';
+    document.getElementById('dictationList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">已清空</div>';
     document.getElementById('mistakeList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先標記生字</div>';
     stopAudio();
     markDirty();
@@ -1003,18 +1029,18 @@
             sel.appendChild(opt);
           });
         } else {
-          var errorMsg = (res && res.error) ? res.error : "請檢查 API Key";
-          sel.innerHTML = '<option value="">⚠️ 未能載入模型 (' + errorMsg + ')</option>';
+          var errorMsg = (res && res.error) ? res.error : "請檢查 Key";
+          sel.innerHTML = '<option value="">⚠️ 載入失敗 (' + errorMsg + ')</option>';
         }
       })
       .withFailureHandler(function(err) {
         loaded = true;
-        sel.innerHTML = '<option value="">⚠️ 未能載入模型 (請檢查 config.js 與 Key)</option>';
+        sel.innerHTML = '<option value="">⚠️ 載入失敗</option>';
       })
       .getAvailableGeminiModels();
       
     setTimeout(function() {
-      if (!loaded) sel.innerHTML = '<option value="">⚠️ 未能載入模型 (連線逾時)</option>';
+      if (!loaded) sel.innerHTML = '<option value="">⚠️ 連線逾時</option>';
     }, 5000);
   }
 
@@ -1044,7 +1070,7 @@
         })
         .withFailureHandler(function(err) {
           document.getElementById('ocrBtn').disabled = false;
-          document.getElementById('ocrStatus').textContent = '系統連線錯誤';
+          document.getElementById('ocrStatus').textContent = '連線錯誤';
         })
         .processImageWithGemini(e.target.result, document.getElementById('modelSelect').value, document.getElementById('saveTitle').value.trim());
     };
@@ -1058,7 +1084,7 @@
   function breakdownTextAndDownload() {
     stopAudio();
     var rawText = document.getElementById('textContent').value.trim();
-    if(!rawText) return showToast('請先輸入課文內容', true);
+    if(!rawText) return showToast('請先輸入課文', true);
 
     if (rawText !== lastParsedText) {
       var rawParagraphs = rawText.split(/\n\s*\n/); 
@@ -1150,7 +1176,7 @@
       bar.style.display = 'flex';
       bar.classList.remove('mode-cache');
       bar.classList.add('mode-api');
-      detailSpan.textContent = "下載失敗: " + errMsg;
+      detailSpan.textContent = "失敗: " + errMsg;
       icon.classList.remove('hourglass-spin');
       updateFloatingPositions();
       return;
@@ -1525,7 +1551,7 @@
     currentRenderedMistakes = currentMistakes; 
 
     if (currentMistakes.length === 0) {
-      container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先在上區標記紅色生字</div>';
+      container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先點字標記</div>';
       return;
     }
 
@@ -1671,7 +1697,7 @@
     isMistakeContinuous = isMistakeMode; 
     
     if (isMistakeMode) {
-      if (currentRenderedMistakes.length === 0) return showToast('清單中沒有生字', true);
+      if (currentRenderedMistakes.length === 0) return showToast('無生字', true);
       continuousPlayList = currentRenderedMistakes;
     } else {
       var currentSents = paragraphs[currentParaIndex] || [];
