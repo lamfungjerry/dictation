@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>英語讀默溫習系統</title>
+  <style>
+    :root { --primary: #2563eb; --primary-hover: #1d4ed8; --bg: #f8fafc; --card-bg: #ffffff; --border: #e2e8f0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); color: #1e293b; padding: 12px; padding-bottom: 50px; line-height: 1.5; font-size: 16px;}
+    .container { max-width: 680px; margin: 0 auto; position: relative; }
+    
+    header { text-align: center; margin-bottom: 15px; position: relative; padding-top: 5px;}
+    .settings-btn { position: absolute; right: 0; top: 0; background: none; border: none; font-size: 24px; color: #475569; width: auto; padding: 5px; margin: 0; transition: 0.2s; cursor: pointer;}
+    .settings-btn:hover { transform: rotate(45deg); }
+    .key-btn { position: absolute; left: 0; top: 0; background: none; border: none; font-size: 24px; color: #475569; width: auto; padding: 5px; margin: 0; transition: 0.2s; cursor: pointer;}
+    .key-btn:hover { transform: scale(1.1); }
+
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden;}
+    .card-header { padding: 15px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+    .card-header h2 { font-size: 16px; margin: 0; color: #334155; display: flex; align-items: center; gap: 6px; }
+    .card-toggle-icon { font-size: 18px; color: #94a3b8; transition: transform 0.3s; }
+    .card.collapsed .card-toggle-icon { transform: rotate(-90deg); }
+    .card-body { padding: 15px; border-top: 1px solid #e2e8f0; transition: 0.3s; }
+    .card.collapsed .card-body { display: none; }
+
+    label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin: 10px 0 4px; }
+    select, input, textarea, button { width: 100%; font-size: 15px; border-radius: 8px; border: 1px solid var(--border); padding: 10px; }
+    select, input[type="file"], input[type="number"], input[type="text"] { background: #fff; }
+    textarea { resize: vertical; min-height: 100px; }
+    
+    button { background: var(--primary); color: #fff; border: none; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.7; }
+    .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-action { background: #10b981; } .btn-action:hover { background: #059669; }
+    .btn-warning { background: #f59e0b; } .btn-warning:hover { background: #d97706; }
+    .btn-danger { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+    .row { display: flex; gap: 10px; } .col { flex: 1; }
+    
+    .dictation-panel { background: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    
+    .sentence-row { display: flex; align-items: flex-start; gap: 8px; padding: 12px 6px; border-bottom: 1px solid #e2e8f0; position: relative; transition: background-color 0.3s; border-radius: 8px;}
+    .sentence-row:last-child { border-bottom: none; }
+    
+    .row-index { font-weight: 600; color: #94a3b8; min-width: 24px; text-align: right; font-size: 14px; margin-top: 6px; display: inline-block;}
+    
+    .btn-play-line { width: auto; margin: 0; padding: 6px 14px; background: #10b981; border-radius: 20px; font-size: 13px; flex-shrink: 0; margin-top: 2px; transition: 0.3s;}
+    .btn-play-line:hover { background: #059669; }
+    .btn-fallback { background: #f59e0b; }
+    .btn-fallback:hover { background: #d97706; }
+
+    .sentence-text { font-size: 17px; color: #1e293b; flex: 1; line-height: 1.5; padding-top: 4px; transition: color 0.3s, background-color 0.3s; }
+    .clickable-word { cursor: pointer; border-bottom: 1px dashed transparent; padding: 0 1px; }
+    .word-mistake { color: #dc2626 !important; font-weight: bold; border-bottom: 2px solid #dc2626; }
+    
+    .text-hidden .sentence-text { color: transparent !important; background-color: #cbd5e1; border-radius: 6px; cursor: pointer; }
+    .text-hidden .clickable-word { color: transparent !important; }
+    .text-hidden .word-mistake { background-color: #fca5a5; }
+    .text-hidden .sentence-text.manual-reveal { color: #1e293b !important; background-color: transparent !important; }
+    .text-hidden .sentence-text.manual-reveal .clickable-word { color: inherit !important; }
+    .text-hidden .sentence-text.manual-reveal .word-mistake { color: #dc2626 !important; background-color: transparent !important; border-bottom: 2px solid #dc2626 !important; }
+
+    @keyframes flash-yellow { 0% { background-color: transparent; } 50% { background-color: #fef08a; } 100% { background-color: transparent; } }
+    .playing-highlight { animation: flash-yellow 1.5s infinite ease-in-out; border-bottom-color: transparent !important;}
+    .last-played-highlight { background-color: #fef9c3; border-bottom-color: transparent !important; }
+
+    .floating-wrapper { position: fixed; right: 0; z-index: 9999; display: flex; align-items: center; transition: transform 0.3s ease-in-out, bottom 0.3s ease-in-out; }
+    .floating-wrapper.collapsed { transform: translateX(calc(100% - 40px)); }
+    .floating-toggle-btn { width: 40px; height: 50px; color: white; border-radius: 25px 0 0 25px; display: flex; justify-content: center; align-items: center; box-shadow: -2px 2px 10px rgba(0,0,0,0.15); cursor: pointer; font-size: 18px; padding-left: 4px; font-weight: bold; transition: background-color 0.3s;}
+    .floating-bar-content { background: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; border-right: none; border-radius: 30px 0 0 30px; padding: 8px 12px 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: -2px 4px 15px rgba(0,0,0,0.15); backdrop-filter: blur(5px); cursor: pointer; transition: border-color 0.3s, box-shadow 0.3s;}
+    .floating-wrapper.collapsed .floating-bar-content { display: none; }
+    .floating-wrapper:not(.collapsed) .floating-toggle-btn { display: none; }
+    .floating-bar-content button { margin: 0; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; padding: 0; display: flex; justify-content: center; align-items: center; }
+    
+    .speed-wrapper { bottom: 45px; }
+    .download-wrapper { bottom: 105px; }
+    .pause-wrapper { bottom: 165px; }
+
+    .speed-toggle-btn { background: #2563eb; }
+    .speed-val-display { font-weight: bold; font-size: 16px; color: #1e293b; min-width: 46px; text-align: left; user-select: none; margin-right: 4px; }
+    .speed-label-text { font-size: 13px; color: #64748b; font-weight: bold; user-select: none; }
+
+    .download-toggle-btn { background: #f59e0b; }
+    .download-val-display { font-weight: bold; font-size: 14px; color: #1e293b; min-width: 140px; text-align: left; user-select: none; margin-right: 4px; transition: color 0.3s; }
+    
+    /* 🟡 API 下載模式 (橙黃色) */
+    #downloadController.mode-api .download-toggle-btn { background: #f59e0b; }
+    #downloadController.mode-api .download-bar-content { border-color: #f59e0b; box-shadow: -2px 4px 15px rgba(245, 158, 11, 0.25); }
+    #downloadController.mode-api .download-val-display { color: #d97706; }
+
+    /* 🟣 Cache 快取讀取模式 (紫色) */
+    #downloadController.mode-cache .download-toggle-btn { background: #8b5cf6; }
+    #downloadController.mode-cache .download-bar-content { border-color: #8b5cf6; box-shadow: -2px 4px 15px rgba(139, 92, 246, 0.25); }
+    #downloadController.mode-cache .download-val-display { color: #7c3aed; }
+
+    .pause-toggle-btn { background: #10b981; }
+
+    @keyframes hourglass-spin {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(180deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .hourglass-spin { animation: hourglass-spin 1.5s infinite ease-in-out; display: inline-block; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(2px);}
+    .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+    .toast-message {
+      visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center;
+      border-radius: 8px; padding: 16px; position: fixed; z-index: 100000; left: 50%; bottom: 30px;
+      transform: translateX(-50%); font-size: 15px; display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+    }
+    .toast-message.show { visibility: visible; opacity: 1; bottom: 50px; }
+    .toast-message.alert { background-color: #dc2626; }
+    .toast-close { cursor: pointer; font-weight: bold; margin-left: 15px; padding: 4px 8px; background: rgba(255,255,255,0.2); border-radius: 4px; }
+    
+    .tab-header { display:flex; border-bottom: 1px solid #cbd5e1; margin-bottom: 15px; }
+    .tab-btn { flex:1; text-align:center; padding:10px 4px; cursor:pointer; font-weight:bold; color:#64748b; border-bottom:3px solid transparent; transition:0.3s; position: relative; font-size: 14px;}
+    .tab-btn.active { color:#2563eb; border-bottom:3px solid #2563eb; }
+
+    /* 醒目提示徽章 (Badge) 與狀態卡片 */
+    .badge-alert {
+      display: none; background: #ef4444; color: #fff; font-size: 11px; font-weight: bold;
+      padding: 2px 6px; border-radius: 999px; margin-left: 4px; vertical-align: middle;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4); animation: pulse-badge 1.8s infinite;
+    }
+    @keyframes pulse-badge {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    .sync-alert-banner {
+      display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #be123c;
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;
+      font-weight: 600; cursor: pointer; align-items: center; justify-content: space-between;
+    }
+    .sync-stat-box {
+      flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 12px; text-align: center;
+    }
+    .sync-stat-num { font-size: 22px; font-weight: 800; margin: 4px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <button class="key-btn" onclick="openKeyModal()">🔑</button>
+    <h1 style="font-size:22px; margin-bottom:4px;">📖 英語讀默溫習系統</h1>
+    <p style="font-size:13px; color:#64748b;">支援 GitHub 極速快取、Drive 同步與盲聽</p>
+    <button class="settings-btn" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
+  </header>
+
+  <div class="card" id="card1">
+    <div class="card-header" onclick="toggleCard('card1')">
+      <div style="display:flex; flex-direction:column;">
+        <h2>
+          📂 1. 課文庫與匯入
+          <span id="headerSyncBadge" class="badge-alert">!</span>
+        </h2>
+        <span id="cloudUsageText" style="font-size:11px; color:#64748b; margin-top:2px; font-weight:normal;">雲端容量: 載入中...</span>
+      </div>
+      <span class="card-toggle-icon">▼</span>
+    </div>
+    <div class="card-body">
+      <!-- 醒目未同步/未清理頂部提示列 -->
+      <div id="syncAlertBanner" class="sync-alert-banner" onclick="switchTab('sync')">
+        <span id="syncAlertText">⚠️ 發現未同步或未清理的音檔快取！</span>
+        <span style="text-decoration: underline;">前往處理 ➔</span>
+      </div>
+
+      <div class="tab-header">
+        <div id="tabLoad" class="tab-btn active" onclick="switchTab('load')">📂 讀取</div>
+        <div id="tabSync" class="tab-btn" onclick="switchTab('sync')">
+          🔄 同步<span id="tabSyncBadge" class="badge-alert">0</span>
+        </div>
+        <div id="tabNew" class="tab-btn" onclick="switchTab('new')">➕ 新增</div>
+      </div>
+
+      <!-- 1. 讀取分頁 -->
+      <div id="panelLoad">
+        <label style="margin-top:0;">選擇已儲存課文：</label>
+        <div class="row">
+          <select id="cloudSaveSelect" class="col"><option value="">載入清單中...</option></select>
+          <button class="btn-secondary" style="width:auto; margin:0;" onclick="loadSelectedSave()">讀取</button>
+          <button class="btn-danger" style="width:auto; margin:0;" onclick="deleteSelectedSave()">刪除</button>
+        </div>
+      </div>
+
+      <!-- 2. 同步與清理分頁 -->
+      <div id="panelSync" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span id="syncRepoLabel" style="font-size:12px; color:#64748b; font-weight:600;">GitHub 狀態：檢查中...</span>
+          <button class="btn-secondary" style="width:auto; margin:0; padding:4px 10px; font-size:12px;" onclick="checkGitHubSyncStatus(true)">🔍 重新檢查</button>
+        </div>
+
+        <div class="row" style="margin-bottom:12px;">
+          <div class="sync-stat-box" style="border-color:#fde68a; background:#fffbeb;">
+            <div style="font-size:12px; color:#b45309; font-weight:bold;">📦 待同步至 GitHub</div>
+            <div id="unsyncedCountNum" class="sync-stat-num" style="color:#d97706;">-</div>
+            <div style="font-size:11px; color:#92400e;">位於 Drive 但 GitHub 尚無</div>
+          </div>
+          <div class="sync-stat-box" style="border-color:#ddd6fe; background:#f5f3ff;">
+            <div style="font-size:12px; color:#6d28d9; font-weight:bold;">🧹 已同步可清理</div>
+            <div id="cleanableCountNum" class="sync-stat-num" style="color:#7c3aed;">-</div>
+            <div id="cleanableSizeText" style="font-size:11px; color:#5b21b6;">可釋放 Drive 空間</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="btnSyncGh" class="btn-action col" style="margin-top:0;" onclick="runGitHubSync()">☁️ 同步至 GitHub</button>
+          <button id="btnCleanDrive" class="btn-danger col" style="margin-top:0;" onclick="runDriveClean()">🗑️ 清理已同步快取</button>
+        </div>
+
+        <div id="syncDetailBox" style="margin-top:12px; font-size:12px; color:#475569; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; max-height:140px; overflow-y:auto; display:none;"></div>
+      </div>
+
+      <!-- 3. 新增分頁 -->
+      <div id="panelNew" style="display:none;">
+        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:15px;">
+          <label style="margin-top:0;">🔍 智能 OCR 匯入 (自動填寫標題與分段)：</label>
+          <select id="modelSelect" style="margin-bottom:8px;"><option value="">載入中...</option></select>
+          <div class="row">
+            <input type="file" id="imageUpload" accept="image/*" class="col" style="padding:6px; font-size:13px;">
+            <button id="ocrBtn" onclick="runOcr()" style="width:auto; margin:0; padding:6px 12px; font-size:14px;">提取文字</button>
+          </div>
+          <div id="ocrStatus" style="font-size: 12px; color: #2563eb; margin-top: 4px;"></div>
+        </div>
+        
+        <label>課文標題：</label>
+        <input type="text" id="saveTitle" placeholder="例如：Chapter 1 Dictation" oninput="markDirty()">
+        
+        <label>課文內容 (空行自動分段)：</label>
+        <textarea id="textContent" oninput="markDirty()" placeholder="請貼上或辨識課文..."></textarea>
+        
+        <div class="row" style="margin-top:8px;">
+          <button class="btn-warning col" id="mainActionBtn" onclick="breakdownTextAndDownload()">📝 儲存並拆解下載</button>
+          <button class="btn-secondary" style="width:auto;" onclick="clearText()">清空</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="card2">
+    <div class="card-header" onclick="toggleCard('card2')">
+      <h2>📖 2. 溫習與讀默模式</h2>
+      <span class="card-toggle-icon">▼</span>
+    </div>
+    <div class="card-body">
+      
+      <div class="row" style="margin-bottom: 12px; align-items:center;">
+        <label style="margin:0; width:auto; flex:1;">連播停頓：</label>
+        <button class="btn-secondary" style="margin:0; width:auto; padding:6px 12px;" onclick="document.getElementById('pauseContinuous').value=1">1 秒</button>
+        <button class="btn-secondary" style="margin:0; width:auto; padding:6px 12px;" onclick="document.getElementById('pauseContinuous').value=5">5 秒</button>
+        
+        <button class="btn-secondary" style="margin:0; width:36px; padding:6px; font-weight:bold; font-size:16px;" onclick="changePauseContinuous(1)">+</button>
+        <input type="number" id="pauseContinuous" value="1" min="0" max="60" step="1" style="margin:0; width:50px; padding:6px; text-align:center;">
+        <button class="btn-secondary" style="margin:0; width:36px; padding:6px; font-weight:bold; font-size:16px;" onclick="changePauseContinuous(-1)">-</button>
+      </div>
+      
+      <div class="row">
+        <button onclick="startContinuousPlay(false)" class="col" style="background:#0284c7; margin-top:0;">▶️ 全段連續朗讀</button>
+        <button onclick="stopAudio()" class="btn-secondary col" style="margin-top:0;">⏹️ 停止發音</button>
+      </div>
+
+      <div class="dictation-panel">
+        <div id="paragraphSelectorContainer" style="display:none; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+          <label style="margin-top:0;">📚 段落選擇：</label>
+          <select id="paragraphSelect" onchange="changeParagraph()" style="margin-top:4px;"></select>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <h3 style="font-size:15px; color:#b45309; margin:0;">✍️ 逐句手動讀默</h3>
+          <label style="display:inline-flex; align-items:center; cursor:pointer; font-weight:normal; color:#475569; margin:0;">
+            <input type="checkbox" id="hideTextToggle" onchange="toggleTextVisibility('dictationList', 'hideTextToggle')" style="width:auto; margin:0 6px 0 0;">盲聽
+          </label>
+        </div>
+
+        <div id="dictationList" style="margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; min-height: 50px;">
+          <div style="text-align:center; color:#94a3b8; padding: 10px;">請先在第1區匯入或讀取課文</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="card3">
+    <div class="card-header" onclick="toggleCard('card3')">
+      <h2>📝 3. 重默生字模式</h2>
+      <span class="card-toggle-icon">▼</span>
+    </div>
+    <div class="card-body">
+      <div class="row" style="margin-bottom: 12px;">
+        <button onclick="startContinuousPlay(true)" class="col" style="background:#0284c7; margin-top:0;">▶️ 生字連續朗讀</button>
+        <button onclick="stopAudio()" class="btn-secondary col" style="margin-top:0;">⏹️ 停止發音</button>
+      </div>
+
+      <div class="dictation-panel" style="background:#f0fdf4; border-color:#86efac;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3 style="font-size:15px; color:#166534; margin:0;">📝 生字清單</h3>
+            <label style="display:inline-flex; align-items:center; cursor:pointer; font-weight:normal; font-size:13px; color:#166534; margin:0;">
+              <input type="checkbox" id="viewAllMistakesToggle" onchange="renderMistakeList()" style="width:auto; margin:0 4px 0 0;">全部段落
+            </label>
+          </div>
+          <label style="display:inline-flex; align-items:center; cursor:pointer; font-weight:normal; color:#475569; margin:0;">
+            <input type="checkbox" id="hideMistakeToggle" onchange="toggleTextVisibility('mistakeList', 'hideMistakeToggle')" style="width:auto; margin:0 6px 0 0;">盲聽
+          </label>
+        </div>
+
+        <div id="mistakeList" style="margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; min-height: 50px;">
+          <div style="text-align:center; color:#94a3b8; padding: 10px;">請先在第2區點字標記為紅色</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="text-align: center; border:none; box-shadow:none; background:transparent;">
+    <h2 style="font-size:14px; color:#64748b;">📱 手機掃描進入</h2>
+    <img id="qrImg" width="150" height="150" src="" style="margin-top:5px; border-radius:8px; display:none;">
+    <div id="urlText" style="font-size:12px; color:#64748b; margin-top:8px; word-break:break-all; display:none;"></div>
+  </div>
+</div>
+
+<div id="keyModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#334155;">🔑 API Key 與 GitHub 設定</h3>
+    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">所有金鑰安全儲存在 GAS 雲端屬性中，前端不留存明碼。</p>
+    
+    <div id="gasUrlContainer" style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed #cbd5e1;">
+      <label style="margin-top:0; color:#2563eb;">🔗 GAS 後端 Web App 網址 (GitHub 前端必填)：</label>
+      <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+
+    <label>Gemini API Key：</label>
+    <div id="geminiKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
+    <input type="text" id="geminiKeyInput" placeholder="輸入 Gemini Key (AIzaSy 或 AQ.)" style="margin-bottom:10px; display:none;">
+    
+    <label>Google Cloud TTS Key：</label>
+    <div id="gcpTtsKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
+    <input type="text" id="gcpTtsKeyInput" placeholder="輸入 Google TTS Key (AIzaSy...)" style="margin-bottom:10px; display:none;">
+    
+    <label>Microsoft Azure TTS Key：</label>
+    <div id="azureTtsKeyStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
+    <input type="text" id="azureTtsKeyInput" placeholder="輸入 Azure TTS Key" style="margin-bottom:10px; display:none;">
+
+    <hr style="border:none; border-top:1px solid #e2e8f0; margin: 12px 0;">
+    <label style="color:#0f172a;">🐙 GitHub Personal Access Token (需勾選 repo 權限)：</label>
+    <div id="ghTokenStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
+    <input type="text" id="ghTokenInput" placeholder="ghp_... 或 github_pat_..." style="margin-bottom:10px; display:none;">
+
+    <div class="row">
+      <div class="col" style="flex:2;">
+        <label style="margin-top:0;">GitHub Repo (帳號/倉庫名)：</label>
+        <input type="text" id="ghRepoInput" placeholder="例如：username/dictation">
+      </div>
+      <div class="col" style="flex:1;">
+        <label style="margin-top:0;">分支 (Branch)：</label>
+        <input type="text" id="ghBranchInput" placeholder="main" value="main">
+      </div>
+    </div>
+    
+    <div class="row" style="margin-top:20px;">
+      <button class="btn-action col" onclick="saveKeys()">💾 儲存設定</button>
+      <button class="btn-secondary col" onclick="document.getElementById('keyModal').style.display='none'">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast-message">
+  <span id="toastText">通知訊息</span>
+  <span class="toast-close" onclick="hideToast()">關閉</span>
+</div>
+
+<div id="settingsModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="margin-top:0; color:#334155;">⚙️ 發音款式設定</h3>
+    <p style="font-size:12px; color:#64748b; margin-bottom:10px;">系統將根據所選模型自動切換 Azure 或 Google 的服務。</p>
+    <select id="googleVoiceSelect" onchange="handleVoiceChange()">
+      <optgroup label="🇭🇰 港澳口音 (Azure Neural)">
+        <option value="en-HK-YanNeural,en-HK">港式女聲 (YanNeural)</option>
+        <option value="en-HK-SamNeural,en-HK">港式男聲 (SamNeural)</option>
+      </optgroup>
+      <optgroup label="🇺🇸 新一代高擬真 (Chirp 3 HD)">
+        <option value="en-US-Chirp3-HD-Aoede,en-US">美式女聲 (Aoede)</option>
+        <option value="en-US-Chirp3-HD-Charon,en-US">美式男聲 (Charon)</option>
+        <option value="en-US-Chirp3-HD-Fenrir,en-US">美式男聲 (Fenrir)</option>
+        <option value="en-US-Chirp3-HD-Kore,en-US">美式女聲 (Kore)</option>
+        <option value="en-US-Chirp3-HD-Puck,en-US">美式男聲 (Puck)</option>
+        <option value="en-US-Chirp3-HD-Zeus,en-US">美式男聲 (Zeus)</option>
+      </optgroup>
+    </select>
+    <button class="btn-secondary" onclick="document.getElementById('settingsModal').style.display='none'" style="margin-top:20px;">完成並關閉</button>
+  </div>
+</div>
+
+<div id="pauseController" class="floating-wrapper pause-wrapper collapsed" style="display:none;">
+  <div id="pauseToggleBtn" class="floating-toggle-btn pause-toggle-btn" onclick="stopGlobalPlayback(event)">⏸️</div>
+</div>
+
+<div id="downloadController" class="floating-wrapper download-wrapper collapsed" style="display:none;">
+  <div class="floating-toggle-btn download-toggle-btn" onclick="openDownloadBar(event)">
+    <span id="dlIcon" style="display:inline-block;">⏳</span>
+  </div>
+  <div class="floating-bar-content download-bar-content" onclick="closeDownloadBar(event)">
+    <span id="dlDetailText" class="download-val-display"></span>
+    <button id="dlPauseBtn" onclick="toggleDownloadPause(event)" class="btn-secondary">⏸️</button>
+  </div>
+</div>
+
+<div id="speedController" class="floating-wrapper speed-wrapper collapsed">
+  <div class="floating-toggle-btn speed-toggle-btn" onclick="openSpeedBar(event)">🐰</div>
+  <div class="floating-bar-content speed-bar-content" onclick="closeSpeedBar(event)">
+    <span class="speed-label-text">語速</span>
+    <span id="floatingSpeedVal" class="speed-val-display">0.80x</span>
+    <button onclick="changeGlobalSpeed(0.05, event)" class="btn-secondary">+</button>
+    <button onclick="changeGlobalSpeed(-0.05, event)" class="btn-secondary">-</button>
+  </div>
+</div>
+
+<script>
+  // 若部署在 GitHub Pages，可將你的 GAS Web App 網址貼在下方字串中，或於網頁左上角 🔑 設定
+  const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxXD65cEBUuioQKLSDFb9K6_yCobRej7uKjmkRrKINWRYbbp-vFL2K3NiOUgQvFaLaI/exec"; 
+
+  // 自動相容層：若在 GitHub Pages 執行，自動將 google.script.run 轉為 fetch POST 呼叫 GAS
+  (function setupGasBridge() {
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      function createRunner(successCb, failureCb) {
+        return new Proxy({}, {
+          get: function(target, prop) {
+            if (prop === 'withSuccessHandler') return function(cb) { return createRunner(cb, failureCb); };
+            if (prop === 'withFailureHandler') return function(cb) { return createRunner(successCb, cb); };
+            return function() {
+              var args = Array.prototype.slice.call(arguments);
+              var gasUrl = localStorage.getItem('dictation_gas_url') || DEFAULT_GAS_URL;
+              if (!gasUrl) {
+                var err = "請先點擊左上角 🔑 設定 GAS 後端網址";
+                if (failureCb) failureCb(err); else showToast(err, true);
+                return;
+              }
+              fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: prop, args: args })
+              })
+              .then(function(r) { return r.json(); })
+              .then(function(res) {
+                if (res.status === 'success') { if (successCb) successCb(res.data); }
+                else { if (failureCb) failureCb(res.message); else showToast(res.message, true); }
+              })
+              .catch(function(err) {
+                if (failureCb) failureCb(err);
+              });
+            };
+          }
+        });
+      }
+      window.google = { script: { run: createRunner(null, null) } };
+    }
+  })();
+
+  var sharedAudio = new Audio();
+  sharedAudio.playsInline = true;
+  var currentAudio = null;
+
+  var nativeVoices = [];
+  var currentSaveId = ""; 
+  var paragraphs = []; 
+  var paragraphMistakes = []; 
+  var currentParaIndex = 0;
+  var lastParsedText = "";
+  var globalAudioCache = {};
+  var githubDirectUrlMap = {}; // 儲存已經在 GitHub 上的音檔直連網址
+  
+  var sentenceFetchQueue = []; 
+  var wordFetchQueue = []; 
+  var totalFetchSents = 0;
+  var totalFetchWords = 0;
+  var isDownloading = false; 
+  var isDownloadPaused = false;
+
+  var isContinuousPlaying = false;
+  var continuousIndex = 0;
+  var continuousTimer = null;
+  var continuousPlayList = []; 
+  var isMistakeContinuous = false;
+  var currentRenderedMistakes = []; 
+  var lastMistakeViewMode = false;
+
+  var lastPlayedDictRowId = null;   
+  var lastPlayedMistakeRowId = null; 
+  var absoluteLastPlayedRowId = null; 
+  var currentlyPlayingRowId = null;  
+
+  var globalSpeedValue = 0.80; 
+  var speedCollapseTimer = null;
+  var dlCollapseTimer = null;
+  var toastTimer = null;
+
+  document.addEventListener('click', function(e) {
+    var sBar = document.getElementById('speedController');
+    if (sBar && !sBar.classList.contains('collapsed')) {
+      if (!sBar.contains(e.target) || e.target.classList.contains('speed-bar-content')) {
+        sBar.classList.add('collapsed');
+        if (speedCollapseTimer) clearTimeout(speedCollapseTimer);
+      }
+    }
+    var dBar = document.getElementById('downloadController');
+    if (dBar && !dBar.classList.contains('collapsed')) {
+      if (!dBar.contains(e.target) || e.target.classList.contains('download-bar-content')) {
+        dBar.classList.add('collapsed');
+        if (dlCollapseTimer) clearTimeout(dlCollapseTimer);
+      }
+    }
+  });
+
+  window.addEventListener('DOMContentLoaded', function() {
+    var savedGasUrl = localStorage.getItem('dictation_gas_url') || DEFAULT_GAS_URL;
+    document.getElementById('gasUrlInput').value = savedGasUrl;
+
+    refreshCloudSaves();
+    loadModels(); 
+    initNativeVoices(); 
+    updateGlobalSpeedDisplay();
+    loadAppUrlAndQr(); 
+    checkGitHubSyncStatus(false); // 每次進入頁面自動檢查 GitHub 同步與清理狀態
+  });
+
+  // ==========================================
+  // GitHub 同步與清理前端邏輯
+  // ==========================================
+  function checkGitHubSyncStatus(showToastMsg) {
+    if (showToastMsg) showToast('🔍 正在檢查 GitHub 與 Drive 狀態...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        updateSyncStatusUI(res);
+        if (showToastMsg && res && !res.error) showToast('✅ 狀態檢查完成');
+      })
+      .withFailureHandler(function() {})
+      .checkSyncStatus();
+  }
+
+  function updateSyncStatusUI(res) {
+    var tabBadge = document.getElementById('tabSyncBadge');
+    var headerBadge = document.getElementById('headerSyncBadge');
+    var banner = document.getElementById('syncAlertBanner');
+    var bannerText = document.getElementById('syncAlertText');
+    var repoLabel = document.getElementById('syncRepoLabel');
+    var detailBox = document.getElementById('syncDetailBox');
+
+    if (!res || !res.configured) {
+      repoLabel.textContent = "GitHub 狀態：尚未設定（請點左上角 🔑 設定）";
+      document.getElementById('unsyncedCountNum').textContent = "-";
+      document.getElementById('cleanableCountNum').textContent = "-";
+      tabBadge.style.display = 'none';
+      headerBadge.style.display = 'none';
+      banner.style.display = 'none';
+      return;
+    }
+
+    if (res.error) {
+      repoLabel.textContent = "⚠️ 錯誤：" + res.error;
+      return;
+    }
+
+    repoLabel.textContent = "🐙 倉庫：" + res.repo + " (" + res.branch + ")";
+    document.getElementById('unsyncedCountNum').textContent = res.unsyncedCount;
+    document.getElementById('cleanableCountNum').textContent = res.cleanableCount;
+    document.getElementById('cleanableSizeText').textContent = "可釋放約 " + (res.cleanableKB || 0) + " KB";
+
+    var totalPending = (res.unsyncedCount || 0) + (res.cleanableCount || 0);
+    if (totalPending > 0) {
+      tabBadge.textContent = totalPending;
+      tabBadge.style.display = 'inline-block';
+      headerBadge.style.display = 'inline-block';
+      banner.style.display = 'flex';
+      
+      var msgParts = [];
+      if (res.unsyncedCount > 0) msgParts.push(res.unsyncedCount + " 個音檔未同步至 GitHub");
+      if (res.cleanableCount > 0) msgParts.push(res.cleanableCount + " 個 Drive 音檔可清理");
+      bannerText.textContent = "⚠️ 提示：有 " + msgParts.join("、") + "！";
+    } else {
+      tabBadge.style.display = 'none';
+      headerBadge.style.display = 'none';
+      banner.style.display = 'none';
+    }
+
+    // 顯示檔案明細
+    var htmlLines = [];
+    if (res.unsyncedList && res.unsyncedList.length > 0) {
+      htmlLines.push("<b>📦 待同步音檔：</b>");
+      res.unsyncedList.forEach(function(item) {
+        htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
+      });
+    }
+    if (res.cleanableList && res.cleanableList.length > 0) {
+      if (htmlLines.length > 0) htmlLines.push("<br>");
+      htmlLines.push("<b>🧹 已在 GitHub 可清理之 Drive 音檔：</b>");
+      res.cleanableList.forEach(function(item) {
+        htmlLines.push("• [" + item.lesson + " / " + item.voice + "] " + item.name);
+      });
+    }
+    if (htmlLines.length > 0) {
+      detailBox.innerHTML = htmlLines.join("<br>");
+      detailBox.style.display = "block";
+    } else {
+      detailBox.innerHTML = "✅ 目前所有音檔皆已同步且 Google Drive 暫存已清理乾淨！";
+      detailBox.style.display = "block";
+    }
+  }
+
+  function runGitHubSync() {
+    var btn = document.getElementById('btnSyncGh');
+    btn.disabled = true;
+    btn.textContent = "☁️ 正在推送至 GitHub...";
+    showToast("正在將 Google Drive 音檔批次 Commit 至 GitHub...");
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (!res || !res.success) {
+          btn.disabled = false;
+          btn.textContent = "☁️ 同步至 GitHub";
+          return showToast("同步失敗：" + (res ? res.error : "未知錯誤"), true);
+        }
+        if (res.status) updateSyncStatusUI(res.status);
+        
+        // 若超過 25 個檔案，自動接續批次同步
+        if (res.remainingCount > 0) {
+          showToast("已同步 " + res.syncedCount + " 個，剩餘 " + res.remainingCount + " 個繼續同步中...");
+          runGitHubSync();
+        } else {
+          btn.disabled = false;
+          btn.textContent = "☁️ 同步至 GitHub";
+          showToast("🎉 成功同步所有音檔至 GitHub！");
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = "☁️ 同步至 GitHub";
+        showToast("連線錯誤：" + err, true);
+      })
+      .syncDriveToGitHub();
+  }
+
+  function runDriveClean() {
+    var btn = document.getElementById('btnCleanDrive');
+    btn.disabled = true;
+    btn.textContent = "🗑️ 清理中...";
+    showToast("正在清理已同步的 Google Drive 音檔...");
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = "🗑️ 清理已同步快取";
+        if (!res || !res.success) {
+          return showToast("清理失敗：" + (res ? res.error : "未知錯誤"), true);
+        }
+        if (res.status) updateSyncStatusUI(res.status);
+        showToast("🗑️ 已安全清理 " + res.deletedCount + " 個 Google Drive 音檔！");
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = "🗑️ 清理已同步快取";
+        showToast("連線錯誤：" + err, true);
+      })
+      .cleanSyncedDriveFiles();
+  }
+
+  // ==========================================
+  // 金鑰與設定管理
+  // ==========================================
+  function openKeyModal() {
+    var savedGasUrl = localStorage.getItem('dictation_gas_url') || DEFAULT_GAS_URL;
+    document.getElementById('gasUrlInput').value = savedGasUrl;
+
+    google.script.run.withSuccessHandler(function(status) {
+      var gmStatus = document.getElementById('geminiKeyStatus');
+      var gmInput = document.getElementById('geminiKeyInput');
+      if (status.geminiSet) { gmStatus.style.display = 'block'; gmInput.style.display = 'none'; }
+      else { gmStatus.style.display = 'none'; gmInput.style.display = 'block'; }
+      
+      var gpStatus = document.getElementById('gcpTtsKeyStatus');
+      var gpInput = document.getElementById('gcpTtsKeyInput');
+      if (status.gcpTtsSet) { gpStatus.style.display = 'block'; gpInput.style.display = 'none'; }
+      else { gpStatus.style.display = 'none'; gpInput.style.display = 'block'; }
+      
+      var azStatus = document.getElementById('azureTtsKeyStatus');
+      var azInput = document.getElementById('azureTtsKeyInput');
+      if (status.azureTtsSet) { azStatus.style.display = 'block'; azInput.style.display = 'none'; }
+      else { azStatus.style.display = 'none'; azInput.style.display = 'block'; }
+
+      var ghStatus = document.getElementById('ghTokenStatus');
+      var ghInput = document.getElementById('ghTokenInput');
+      if (status.ghTokenSet) { ghStatus.style.display = 'block'; ghInput.style.display = 'none'; }
+      else { ghStatus.style.display = 'none'; ghInput.style.display = 'block'; }
+
+      document.getElementById('ghRepoInput').value = status.ghRepo || '';
+      document.getElementById('ghBranchInput').value = status.ghBranch || 'main';
+      
+      gmStatus.onclick = function() { gmStatus.style.display='none'; gmInput.style.display='block'; gmInput.focus(); };
+      gpStatus.onclick = function() { gpStatus.style.display='none'; gpInput.style.display='block'; gpInput.focus(); };
+      azStatus.onclick = function() { azStatus.style.display='none'; azInput.style.display='block'; azInput.focus(); };
+      ghStatus.onclick = function() { ghStatus.style.display='none'; ghInput.style.display='block'; ghInput.focus(); };
+      
+      document.getElementById('keyModal').style.display = 'flex';
+    }).withFailureHandler(function() {
+      // 若在 GitHub Pages 尚未設定 GAS 網址，直接開啟視窗讓使用者輸入
+      document.getElementById('geminiKeyInput').style.display = 'block';
+      document.getElementById('gcpTtsKeyInput').style.display = 'block';
+      document.getElementById('azureTtsKeyInput').style.display = 'block';
+      document.getElementById('ghTokenInput').style.display = 'block';
+      document.getElementById('keyModal').style.display = 'flex';
+    }).getApiKeysStatus();
+  }
+
+  function saveKeys() {
+    var gasUrl = document.getElementById('gasUrlInput').value.trim();
+    if (gasUrl) localStorage.setItem('dictation_gas_url', gasUrl);
+
+    var gKey = document.getElementById('geminiKeyInput').value.replace(/[\s"']/g, '');
+    var gcpKey = document.getElementById('gcpTtsKeyInput').value.replace(/[\s"']/g, '');
+    var azKey = document.getElementById('azureTtsKeyInput').value.replace(/[\s"']/g, '');
+    var ghToken = document.getElementById('ghTokenInput').value.replace(/[\s"']/g, '');
+    var ghRepo = document.getElementById('ghRepoInput').value.trim();
+    var ghBranch = document.getElementById('ghBranchInput').value.trim() || 'main';
+    
+    if (gKey && ((!gKey.startsWith('AIzaSy') && !gKey.startsWith('AQ.')) || gKey.length < 35)) return showToast('Gemini Key 格式錯誤', true);
+    if (gcpKey && (!gcpKey.startsWith('AIzaSy') || gcpKey.length < 35)) return showToast('Google TTS Key 格式錯誤', true);
+    if (azKey && azKey.length < 20) return showToast('Azure TTS Key 格式錯誤', true);
+    
+    document.getElementById('keyModal').style.display = 'none';
+    showToast('儲存中...');
+    google.script.run.withSuccessHandler(function() {
+      showToast('🔑 設定已永久儲存');
+      refreshCloudSaves();
+      loadModels(); 
+      checkGitHubSyncStatus(false);
+    }).saveApiKeys(gKey, gcpKey, azKey, ghToken, ghRepo, ghBranch);
+  }
+
+  function switchTab(tabId) {
+    var tabs = ['load', 'sync', 'new'];
+    var panels = { load: 'panelLoad', sync: 'panelSync', new: 'panelNew' };
+    var btns = { load: 'tabLoad', sync: 'tabSync', new: 'tabNew' };
+
+    tabs.forEach(function(t) {
+      if (t === tabId) {
+        document.getElementById(btns[t]).classList.add('active');
+        document.getElementById(panels[t]).style.display = 'block';
+      } else {
+        document.getElementById(btns[t]).classList.remove('active');
+        document.getElementById(panels[t]).style.display = 'none';
+      }
+    });
+
+    if (tabId === 'sync') {
+      checkGitHubSyncStatus(false);
+    }
+  }
+
+  function showToast(message, isAlert) {
+    var toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = message;
+    if (isAlert) toast.classList.add('alert');
+    else toast.classList.remove('alert');
+    toast.classList.add('show');
+    
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toast.classList.remove('show');
+    }, 3000);
+  }
+
+  function hideToast() {
+    var toast = document.getElementById('toast');
+    toast.classList.remove('show');
+    if (toastTimer) clearTimeout(toastTimer);
+  }
+
+  function updateFloatingPositions() {
+    var dBar = document.getElementById('downloadController');
+    var pBar = document.getElementById('pauseController');
+    if (dBar.style.display !== 'none') pBar.style.bottom = '165px';
+    else pBar.style.bottom = '105px';
+  }
+
+  function resetSpeedCollapseTimer() {
+    if (speedCollapseTimer) clearTimeout(speedCollapseTimer);
+    speedCollapseTimer = setTimeout(function() {
+      var bar = document.getElementById('speedController');
+      if (bar && !bar.classList.contains('collapsed')) bar.classList.add('collapsed');
+    }, 3000);
+  }
+
+  function openSpeedBar(event) {
+    if(event) event.stopPropagation();
+    document.getElementById('speedController').classList.remove('collapsed');
+    resetSpeedCollapseTimer();
+  }
+
+  function closeSpeedBar(event) {
+    if(event) event.stopPropagation();
+    var bar = document.getElementById('speedController');
+    if (!bar.classList.contains('collapsed')) {
+      bar.classList.add('collapsed');
+      if (speedCollapseTimer) clearTimeout(speedCollapseTimer);
+    }
+  }
+
+  function changeGlobalSpeed(delta, event) {
+    if(event) event.stopPropagation(); 
+    globalSpeedValue += delta;
+    if (globalSpeedValue < 0.5) globalSpeedValue = 0.5;
+    if (globalSpeedValue > 1.2) globalSpeedValue = 1.2;
+    updateGlobalSpeedDisplay();
+    resetSpeedCollapseTimer(); 
+  }
+
+  function updateGlobalSpeedDisplay() {
+    var displayVal = globalSpeedValue.toFixed(2);
+    document.getElementById('floatingSpeedVal').innerText = displayVal + 'x';
+    if (sharedAudio) {
+      sharedAudio.playbackRate = globalSpeedValue;
+      sharedAudio.defaultPlaybackRate = globalSpeedValue;
+    }
+  }
+
+  function resetDlCollapseTimer() {
+    if (dlCollapseTimer) clearTimeout(dlCollapseTimer);
+    dlCollapseTimer = setTimeout(function() {
+      var bar = document.getElementById('downloadController');
+      if (bar && !bar.classList.contains('collapsed')) bar.classList.add('collapsed');
+    }, 3000);
+  }
+
+  function openDownloadBar(event) {
+    if(event) event.stopPropagation();
+    document.getElementById('downloadController').classList.remove('collapsed');
+    resetDlCollapseTimer();
+  }
+
+  function closeDownloadBar(event) {
+    if(event) event.stopPropagation();
+    var bar = document.getElementById('downloadController');
+    if (!bar.classList.contains('collapsed')) {
+      bar.classList.add('collapsed');
+      if (dlCollapseTimer) clearTimeout(dlCollapseTimer);
+    }
+  }
+
+  function toggleCard(cardId) { document.getElementById(cardId).classList.toggle('collapsed'); }
+  function closeTopCards() { document.getElementById('card1').classList.add('collapsed'); }
+
+  function stopGlobalPlayback(event) {
+    if(event) event.stopPropagation();
+    stopAudio();
+  }
+
+  function updatePauseButtonVisibility() {
+    var pBar = document.getElementById('pauseController');
+    var isPlayingSomething = (currentAudio && !currentAudio.paused) || (window.speechSynthesis && window.speechSynthesis.speaking) || isContinuousPlaying;
+    if (isPlayingSomething) {
+      pBar.style.display = 'flex';
+      document.getElementById('pauseToggleBtn').innerHTML = '⏸️';
+    } else {
+      pBar.style.display = 'none';
+    }
+    updateFloatingPositions();
+  }
+  setInterval(updatePauseButtonVisibility, 500);
+
+  function changePauseContinuous(delta) {
+    var input = document.getElementById('pauseContinuous');
+    var newVal = parseInt(input.value) + delta;
+    if (newVal < 0) newVal = 0;
+    if (newVal > 60) newVal = 60;
+    input.value = newVal;
+  }
+
+  function refreshCloudSaves() {
+    var sel = document.getElementById('cloudSaveSelect');
+    sel.innerHTML = '<option value="">載入清單中...</option>';
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
+        sel.innerHTML = '';
+        if(res.saves.length === 0) {
+          sel.innerHTML = '<option value="">(目前無雲端紀錄)</option>';
+        } else {
+          res.saves.forEach(function(s) {
+            var dateStr = new Date(s.date).toLocaleDateString('zh-HK');
+            var opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.title + ' (' + dateStr + ')';
+            sel.appendChild(opt);
+          });
+        }
+      })
+      .getCloudSaves();
+  }
+
+  function loadSelectedSave() {
+    var id = document.getElementById('cloudSaveSelect').value;
+    if(!id) return showToast('請先選擇一份紀錄', true);
+    google.script.run
+      .withSuccessHandler(function(data) {
+        if(!data) return showToast('讀取失敗', true);
+        currentSaveId = data.id;
+        document.getElementById('saveTitle').value = data.title;
+        document.getElementById('textContent').value = data.text;
+        paragraphs = data.paragraphs || [];
+        paragraphMistakes = data.mistakes || [];
+        lastParsedText = data.text;
+        currentParaIndex = 0;
+        lastPlayedDictRowId = null;
+        lastPlayedMistakeRowId = null;
+        absoluteLastPlayedRowId = null;
+        
+        try {
+          var localCache = localStorage.getItem('dictation_audio_cache');
+          if(localCache) globalAudioCache = JSON.parse(localCache);
+        } catch(e) { globalAudioCache = {}; }
+
+        updateParagraphSelector();
+        renderDictationList();
+        renderMistakeList();
+        checkAndDownloadAudio(); 
+        closeTopCards(); 
+        document.getElementById('mainActionBtn').style.display = 'none'; 
+        showToast('📂 已成功載入課文');
+      })
+      .loadCloudSave(id);
+  }
+
+  function deleteSelectedSave() {
+    var id = document.getElementById('cloudSaveSelect').value;
+    if(!id) return;
+    showToast('刪除中...', true);
+    google.script.run
+      .withSuccessHandler(function(res) {
+        document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
+        refreshCloudSaves();
+        showToast('🗑️ 紀錄已刪除', true);
+      })
+      .deleteCloudSave(id);
+  }
+
+  function autoSaveToCloud() {
+    var title = document.getElementById('saveTitle').value.trim() || '未命名課文';
+    var text = document.getElementById('textContent').value.trim();
+    if(!text) return;
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if(res && res.saves) {
+          document.getElementById('cloudUsageText').textContent = '雲端容量: ' + res.usageKB + ' KB / 500 KB (' + res.usagePercent + '%)';
+          if (res.id) currentSaveId = res.id;
+          
+          var sel = document.getElementById('cloudSaveSelect');
+          sel.innerHTML = '';
+          res.saves.forEach(function(s) {
+            var dateStr = new Date(s.date).toLocaleDateString('zh-HK');
+            var opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.title + ' (' + dateStr + ')';
+            if(s.id === currentSaveId) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        }
+      })
+      .saveToCloud(currentSaveId, title, text, paragraphs, paragraphMistakes);
+
+    try { localStorage.setItem('dictation_audio_cache', JSON.stringify(globalAudioCache)); } catch(e) {}
+  }
+
+  function markDirty() {
+    var rawText = document.getElementById('textContent').value.trim();
+    var btn = document.getElementById('mainActionBtn');
+    if (isDownloading) return; 
+    if (rawText !== lastParsedText || paragraphs.length === 0) {
+      btn.style.display = 'block';
+    }
+  }
+
+  function clearText() {
+    document.getElementById('textContent').value = '';
+    document.getElementById('saveTitle').value = '';
+    currentSaveId = '';
+    paragraphs = [];
+    paragraphMistakes = [];
+    currentParaIndex = 0;
+    lastParsedText = "";
+    lastPlayedDictRowId = null;
+    lastPlayedMistakeRowId = null;
+    absoluteLastPlayedRowId = null;
+    document.getElementById('paragraphSelectorContainer').style.display = 'none';
+    document.getElementById('dictationList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">內容已清空</div>';
+    document.getElementById('mistakeList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先標記生字</div>';
+    stopAudio();
+    markDirty();
+  }
+
+  function loadModels() {
+    var sel = document.getElementById('modelSelect');
+    var loaded = false;
+    google.script.run
+      .withSuccessHandler(function(res) {
+        loaded = true;
+        sel.innerHTML = '';
+        if(res && res.success && res.models && res.models.length > 0) {
+          res.models.forEach(function(m, i) {
+            var opt = document.createElement('option');
+            opt.value = m.id; opt.textContent = m.displayName;
+            if(i===0) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        } else {
+          var errorMsg = (res && res.error) ? res.error : "請檢查 API Key";
+          sel.innerHTML = '<option value="">⚠️ 未能載入模型 (' + errorMsg + ')</option>';
+        }
+      })
+      .withFailureHandler(function(err) {
+        loaded = true;
+        sel.innerHTML = '<option value="">⚠️ 未能載入模型 (請設定 GAS 網址與 Key)</option>';
+      })
+      .getAvailableGeminiModels();
+      
+    setTimeout(function() {
+      if (!loaded) sel.innerHTML = '<option value="">⚠️ 未能載入模型 (連線逾時)</option>';
+    }, 5000);
+  }
+
+  function runOcr() {
+    var fileInput = document.getElementById('imageUpload');
+    if(!fileInput.files[0]) return showToast('請先選擇圖片', true);
+    document.getElementById('ocrBtn').disabled = true;
+    document.getElementById('ocrStatus').textContent = '辨識中...';
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('ocrBtn').disabled = false;
+          if(res.success) { 
+            var resultText = res.text;
+            var titleMatch = resultText.match(/^TITLE:\s*(.*)/i);
+            if (titleMatch) {
+              document.getElementById('saveTitle').value = titleMatch[1].trim();
+              resultText = resultText.replace(/^TITLE:\s*(.*)\n*/i, '').trim();
+            }
+            document.getElementById('textContent').value = resultText; 
+            document.getElementById('ocrStatus').textContent = '成功！'; 
+            markDirty();
+          } else { 
+            document.getElementById('ocrStatus').textContent = '錯誤：' + res.error; 
+          }
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('ocrBtn').disabled = false;
+          document.getElementById('ocrStatus').textContent = '系統連線錯誤';
+        })
+        .processImageWithGemini(e.target.result, document.getElementById('modelSelect').value, document.getElementById('saveTitle').value.trim());
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  }
+
+  function splitSentences(text) {
+    return text.replace(/([.?!])\s*(?=[A-Za-z0-9])/g, "$1|").replace(/\n/g, "|").split("|").map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+  }
+
+  function breakdownTextAndDownload() {
+    stopAudio();
+    var rawText = document.getElementById('textContent').value.trim();
+    if(!rawText) return showToast('請先輸入課文內容', true);
+
+    if (rawText !== lastParsedText) {
+      var rawParagraphs = rawText.split(/\n\s*\n/); 
+      paragraphs = [];
+      paragraphMistakes = [];
+      rawParagraphs.forEach(function(pText) {
+        var sents = splitSentences(pText);
+        if(sents.length > 0) {
+          paragraphs.push(sents);
+          paragraphMistakes.push([]); 
+        }
+      });
+      lastParsedText = rawText;
+      currentParaIndex = 0;
+      lastPlayedDictRowId = null;
+      lastPlayedMistakeRowId = null;
+      absoluteLastPlayedRowId = null;
+    }
+    
+    document.getElementById('mainActionBtn').style.display = 'none'; 
+    updateParagraphSelector();
+    renderDictationList();
+    renderMistakeList();
+    autoSaveToCloud(); 
+    checkAndDownloadAudio(); 
+    closeTopCards(); 
+  }
+
+  function updateParagraphSelector() {
+    var container = document.getElementById('paragraphSelectorContainer');
+    var select = document.getElementById('paragraphSelect');
+    if (paragraphs.length <= 1) {
+      container.style.display = 'none';
+    } else {
+      container.style.display = 'block';
+      select.innerHTML = '';
+      for (var i = 0; i < paragraphs.length; i++) {
+        var opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = '第 ' + (i + 1) + ' 段 (' + paragraphs[i].length + ' 句)';
+        if (i === currentParaIndex) opt.selected = true;
+        select.appendChild(opt);
+      }
+    }
+  }
+
+  function changeParagraph() {
+    stopAudio();
+    currentParaIndex = parseInt(document.getElementById('paragraphSelect').value);
+    renderDictationList();
+    renderMistakeList();
+  }
+
+  function handleVoiceChange() {
+    renderDictationList(); 
+    renderMistakeList();
+    checkAndDownloadAudio();
+  }
+
+  function toggleDownloadPause(event) {
+    if(event) event.stopPropagation();
+    isDownloadPaused = !isDownloadPaused;
+    var pauseBtn = document.getElementById('dlPauseBtn');
+    var icon = document.getElementById('dlIcon');
+    
+    pauseBtn.innerHTML = isDownloadPaused ? '▶️' : '⏸️';
+    
+    if (isDownloadPaused) {
+      document.getElementById('dlDetailText').textContent = "已暫停";
+      icon.classList.remove('hourglass-spin'); 
+    } else if (!isDownloading) {
+      isDownloading = true;
+      var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
+      fetchNextInQueue(vConfig[0], vConfig[1]);
+    }
+  }
+
+  function updateDownloadUI(isComplete, isError, errMsg) {
+    var bar = document.getElementById('downloadController');
+    var detailSpan = document.getElementById('dlDetailText');
+    var pauseBtn = document.getElementById('dlPauseBtn');
+    var icon = document.getElementById('dlIcon');
+
+    var remainSents = sentenceFetchQueue.length;
+    var remainWords = wordFetchQueue.length;
+    var totalRemain = remainSents + remainWords;
+
+    if (isError) {
+      bar.style.display = 'flex';
+      bar.classList.remove('mode-cache');
+      bar.classList.add('mode-api');
+      detailSpan.textContent = "下載失敗: " + errMsg;
+      icon.classList.remove('hourglass-spin');
+      updateFloatingPositions();
+      return;
+    }
+
+    if (isComplete || totalRemain === 0) {
+      icon.classList.remove('hourglass-spin'); 
+      bar.style.display = 'none'; 
+      bar.classList.remove('mode-api', 'mode-cache');
+      updateFloatingPositions();
+    } else {
+      bar.style.display = 'flex';
+      
+      var doneSents = totalFetchSents - remainSents;
+      var doneWords = totalFetchWords - remainWords;
+      var text = "";
+      if (totalFetchSents > 0) text += "句子(" + doneSents + "/" + totalFetchSents + ") ";
+      if (totalFetchWords > 0) text += "生字(" + doneWords + "/" + totalFetchWords + ")";
+      detailSpan.textContent = text;
+      pauseBtn.innerHTML = isDownloadPaused ? '▶️' : '⏸️';
+      
+      if (!isDownloadPaused) icon.classList.add('hourglass-spin');
+      updateFloatingPositions();
+    }
+  }
+
+  // 先檢查 GitHub 上是否已經有對應的 MP3，若無才排入 Google Drive / API 下載佇列
+  function checkAndDownloadAudio() {
+    var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
+    var voiceKey = vConfig[0];
+    var langCode = vConfig[1];
+    var saveTitle = document.getElementById('saveTitle').value.trim() || '未命名課文';
+
+    if (!globalAudioCache[voiceKey]) globalAudioCache[voiceKey] = {};
+    if (!githubDirectUrlMap[voiceKey]) githubDirectUrlMap[voiceKey] = {};
+
+    var allTexts = [];
+    for (var p = 0; p < paragraphs.length; p++) {
+      var sents = paragraphs[p] || [];
+      sents.forEach(function(s) { if (allTexts.indexOf(s) === -1) allTexts.push(s); });
+      var msts = paragraphMistakes[p] || [];
+      msts.forEach(function(w) { if (allTexts.indexOf(w) === -1) allTexts.push(w); });
+    }
+
+    // 先向後端查詢哪些音檔已經存在於 GitHub
+    google.script.run
+      .withSuccessHandler(function(ghRes) {
+        if (ghRes && ghRes.enabled && ghRes.urls) {
+          for (var t in ghRes.urls) {
+            githubDirectUrlMap[voiceKey][t] = ghRes.urls[t];
+            updateButtonStatesImmediately(t);
+          }
+        }
+        enqueueMissingAudio(voiceKey, langCode);
+      })
+      .withFailureHandler(function() {
+        enqueueMissingAudio(voiceKey, langCode);
+      })
+      .getLessonGitHubCacheMap(saveTitle, voiceKey, allTexts);
+  }
+
+  function enqueueMissingAudio(voiceKey, langCode) {
+    sentenceFetchQueue = [];
+    wordFetchQueue = [];
+
+    for (var p = 0; p < paragraphs.length; p++) {
+      var currentSents = paragraphs[p] || [];
+      for (var i = 0; i < currentSents.length; i++) {
+        var s = currentSents[i];
+        if (!isAudioReady(s) && sentenceFetchQueue.indexOf(s) === -1) {
+          sentenceFetchQueue.push(s);
+        }
+      }
+      var msts = paragraphMistakes[p] || [];
+      for (var k = 0; k < msts.length; k++) {
+        var w = msts[k];
+        if (!isAudioReady(w) && wordFetchQueue.indexOf(w) === -1) {
+          wordFetchQueue.push(w);
+        }
+      }
+    }
+
+    totalFetchSents = sentenceFetchQueue.length;
+    totalFetchWords = wordFetchQueue.length;
+
+    if (totalFetchSents === 0 && totalFetchWords === 0) {
+      updateDownloadUI(true);
+      return;
+    }
+
+    updateDownloadUI();
+    document.getElementById('mainActionBtn').style.display = 'none';
+    if (!isDownloading && !isDownloadPaused) {
+      isDownloading = true;
+      fetchNextInQueue(voiceKey, langCode);
+    }
+  }
+
+  function fetchNextInQueue(voiceName, langCode) {
+    if (isDownloadPaused) {
+      isDownloading = false;
+      return;
+    }
+
+    if (sentenceFetchQueue.length === 0 && wordFetchQueue.length === 0) {
+      isDownloading = false;
+      updateDownloadUI(true);
+      try { localStorage.setItem('dictation_audio_cache', JSON.stringify(globalAudioCache)); } catch(e) {}
+      // 下載完成後自動檢查一次 GitHub 同步狀態，更新醒目紅點提示
+      checkGitHubSyncStatus(false);
+      return;
+    }
+    
+    updateDownloadUI();
+
+    var isSentence = sentenceFetchQueue.length > 0;
+    var textToFetch = isSentence ? sentenceFetchQueue[0] : wordFetchQueue[0];
+    var saveTitle = document.getElementById('saveTitle').value.trim() || '未命名課文';
+    
+    var isAzure = voiceName.indexOf('Neural') !== -1;
+    
+    var successFn = function(res) {
+      if(res && res.success) {
+        var dlBar = document.getElementById('downloadController');
+        if (res.cached) {
+          dlBar.classList.remove('mode-api');
+          dlBar.classList.add('mode-cache');
+        } else {
+          dlBar.classList.remove('mode-cache');
+          dlBar.classList.add('mode-api');
+        }
+
+        globalAudioCache[voiceName][textToFetch] = res.audioContent;
+        updateButtonStatesImmediately(textToFetch); 
+        if(isSentence) sentenceFetchQueue.shift(); else wordFetchQueue.shift();
+        
+        if ((sentenceFetchQueue.length + wordFetchQueue.length) % 5 === 0) {
+           try { localStorage.setItem('dictation_audio_cache', JSON.stringify(globalAudioCache)); } catch(e) {}
+        }
+      } else {
+        isDownloading = false;
+        updateDownloadUI(false, true, res ? res.error : "未知錯誤");
+        sentenceFetchQueue = []; wordFetchQueue = [];
+        return;
+      }
+      fetchNextInQueue(voiceName, langCode); 
+    };
+    
+    var failureFn = function(err) {
+      if(isSentence) sentenceFetchQueue.shift(); else wordFetchQueue.shift();
+      fetchNextInQueue(voiceName, langCode); 
+    };
+
+    if (isAzure) {
+      google.script.run
+        .withSuccessHandler(successFn)
+        .withFailureHandler(failureFn)
+        .getAzureTTS(textToFetch, voiceName, langCode, 1.0, saveTitle); 
+    } else {
+      google.script.run
+        .withSuccessHandler(successFn)
+        .withFailureHandler(failureFn)
+        .getGoogleTTS(textToFetch, voiceName, langCode, 1.0, saveTitle); 
+    }
+  }
+
+  function autoDownloadWord(word) {
+    var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
+    var voiceKey = vConfig[0];
+    if (!globalAudioCache[voiceKey]) globalAudioCache[voiceKey] = {};
+    if (isAudioReady(word)) return; 
+
+    if (wordFetchQueue.indexOf(word) === -1) {
+      wordFetchQueue.push(word);
+      totalFetchWords++;
+      updateDownloadUI();
+    }
+
+    if (!isDownloading && !isDownloadPaused) {
+      isDownloading = true;
+      fetchNextInQueue(vConfig[0], vConfig[1]);
+    }
+  }
+
+  function updateButtonStatesImmediately(text) {
+    var btns = document.querySelectorAll('.btn-fallback');
+    for(var i=0; i<btns.length; i++) {
+       if(btns[i].getAttribute('data-text') === text) {
+          btns[i].className = 'btn-play-line';
+          btns[i].innerHTML = '▶️ 播放';
+       }
+    }
+  }
+
+  function isAudioReady(text) {
+    var voiceKey = document.getElementById('googleVoiceSelect').value.split(',')[0];
+    var inLocal = !!(globalAudioCache[voiceKey] && globalAudioCache[voiceKey][text]);
+    var inGitHub = !!(githubDirectUrlMap[voiceKey] && githubDirectUrlMap[voiceKey][text]);
+    return inLocal || inGitHub;
+  }
+
+  function getPlayableAudioSrc(voiceKey, text) {
+    if (globalAudioCache[voiceKey] && globalAudioCache[voiceKey][text]) {
+      return "data:audio/mp3;base64," + globalAudioCache[voiceKey][text];
+    }
+    if (githubDirectUrlMap[voiceKey] && githubDirectUrlMap[voiceKey][text]) {
+      return githubDirectUrlMap[voiceKey][text];
+    }
+    return null;
+  }
+
+  function handleManualReveal(el) {
+    if (el.classList.contains('manual-reveal')) {
+      el.classList.remove('manual-reveal');
+      if (el.revealTimer) clearTimeout(el.revealTimer);
+    } else {
+      el.classList.add('manual-reveal');
+      if (el.revealTimer) clearTimeout(el.revealTimer);
+      el.revealTimer = setTimeout(function() {
+        el.classList.remove('manual-reveal');
+      }, 5000);
+    }
+  }
+
+  function renderDictationList() {
+    var container = document.getElementById('dictationList');
+    container.innerHTML = '';
+    
+    var isHidden = document.getElementById('hideTextToggle').checked;
+    if (isHidden) container.classList.add('text-hidden');
+    else container.classList.remove('text-hidden');
+
+    var currentSents = paragraphs[currentParaIndex] || [];
+    var currentMistakes = paragraphMistakes[currentParaIndex] || [];
+
+    if (currentSents.length === 0) {
+      container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">尚無內容</div>';
+      return;
+    }
+
+    for (var i = 0; i < currentSents.length; i++) {
+      var row = document.createElement('div');
+      row.className = 'sentence-row';
+      row.id = 'dict-row-' + i; 
+
+      var idxSpan = document.createElement('span');
+      idxSpan.className = 'row-index';
+      idxSpan.innerHTML = (i + 1) + '.';
+      idxSpan.id = 'indicator-dict-row-' + i;
+      idxSpan.setAttribute('data-index', (i + 1) + '.');
+      row.appendChild(idxSpan);
+
+      var btn = document.createElement('button');
+      var ready = isAudioReady(currentSents[i]);
+      btn.className = ready ? 'btn-play-line' : 'btn-play-line btn-fallback';
+      btn.innerHTML = ready ? '▶️ 播放' : '⏳ 播放';
+      btn.setAttribute('data-text', currentSents[i]); 
+      btn.onclick = (function(idx, rowEl) { 
+        return function(e) { e.stopPropagation(); playSingleText(currentSents[idx], rowEl, false); }; 
+      })(i, row);
+      row.appendChild(btn);
+
+      var txtContainer = document.createElement('span');
+      txtContainer.className = 'sentence-text';
+      txtContainer.onclick = function(e) {
+        if (document.getElementById('hideTextToggle').checked && e.target.tagName !== 'BUTTON') {
+           handleManualReveal(this);
+        }
+      };
+      
+      var words = currentSents[i].split(/(\s+)/);
+      words.forEach(function(w) {
+        if (w.trim().length === 0) {
+          txtContainer.appendChild(document.createTextNode(w));
+        } else {
+          var match = w.match(/^([^a-zA-Z0-9]*)([a-zA-Z0-9'-]+)([^a-zA-Z0-9]*)$/);
+          if (match) {
+            if (match[1]) txtContainer.appendChild(document.createTextNode(match[1]));
+            var wordSpan = document.createElement('span');
+            var cleanWord = match[2];
+            wordSpan.textContent = cleanWord;
+            
+            if (currentMistakes.indexOf(cleanWord) !== -1) wordSpan.className = 'clickable-word word-mistake';
+            else wordSpan.className = 'clickable-word';
+            
+            wordSpan.onclick = function(e) { 
+               if (document.getElementById('hideTextToggle').checked && !txtContainer.classList.contains('manual-reveal')) return;
+               e.stopPropagation();
+               var isMarked = this.classList.toggle('word-mistake'); 
+               if (isMarked) {
+                 if (currentMistakes.indexOf(cleanWord) === -1) {
+                   currentMistakes.push(cleanWord);
+                   autoDownloadWord(cleanWord); 
+                 }
+               } else {
+                 var idx = currentMistakes.indexOf(cleanWord);
+                 if (idx !== -1) currentMistakes.splice(idx, 1);
+               }
+               autoSaveToCloud();
+               renderMistakeList();
+            };
+            txtContainer.appendChild(wordSpan);
+            if (match[3]) txtContainer.appendChild(document.createTextNode(match[3]));
+          } else {
+            var span = document.createElement('span');
+            var cleanWord = w;
+            span.textContent = cleanWord;
+            if (currentMistakes.indexOf(cleanWord) !== -1) span.className = 'clickable-word word-mistake';
+            else span.className = 'clickable-word';
+
+            span.onclick = function(e) { 
+               if (document.getElementById('hideTextToggle').checked && !txtContainer.classList.contains('manual-reveal')) return;
+               e.stopPropagation();
+               var isMarked = this.classList.toggle('word-mistake'); 
+               if (isMarked) {
+                 if (currentMistakes.indexOf(cleanWord) === -1) {
+                   currentMistakes.push(cleanWord);
+                   autoDownloadWord(cleanWord); 
+                 }
+               } else {
+                 var idx = currentMistakes.indexOf(cleanWord);
+                 if (idx !== -1) currentMistakes.splice(idx, 1);
+               }
+               autoSaveToCloud();
+               renderMistakeList();
+            };
+            txtContainer.appendChild(span);
+          }
+        }
+      });
+      row.appendChild(txtContainer);
+      container.appendChild(row);
+
+      if (lastPlayedDictRowId === row.id) {
+         idxSpan.textContent = '📍';
+      }
+      if (absoluteLastPlayedRowId === row.id) {
+         row.classList.add('last-played-highlight');
+      }
+      if (currentlyPlayingRowId === row.id) {
+         row.classList.add('playing-highlight');
+      }
+    }
+  }
+
+  function renderMistakeList() {
+    var container = document.getElementById('mistakeList');
+    container.innerHTML = '';
+    
+    var isHidden = document.getElementById('hideMistakeToggle').checked;
+    if (isHidden) container.classList.add('text-hidden');
+    else container.classList.remove('text-hidden');
+
+    var viewAll = document.getElementById('viewAllMistakesToggle').checked;
+    
+    if (viewAll !== lastMistakeViewMode) {
+      lastPlayedMistakeRowId = null;
+      if (absoluteLastPlayedRowId && absoluteLastPlayedRowId.indexOf('mistake') > -1) absoluteLastPlayedRowId = null;
+      lastMistakeViewMode = viewAll;
+    }
+
+    var currentMistakes = [];
+    if (!viewAll) {
+      currentMistakes = paragraphMistakes[currentParaIndex] || [];
+    } else {
+      var allM = [];
+      for(var p=0; p<paragraphMistakes.length; p++) {
+        var mArr = paragraphMistakes[p] || [];
+        for(var k=0; k<mArr.length; k++) {
+           if(allM.indexOf(mArr[k]) === -1) allM.push(mArr[k]);
+        }
+      }
+      currentMistakes = allM;
+    }
+    currentRenderedMistakes = currentMistakes; 
+
+    if (currentMistakes.length === 0) {
+      container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先在上區標記紅色生字</div>';
+      return;
+    }
+
+    for (var i = 0; i < currentMistakes.length; i++) {
+      var row = document.createElement('div');
+      row.className = 'sentence-row';
+      row.id = 'mistake-row-' + i; 
+
+      var idxSpan = document.createElement('span');
+      idxSpan.className = 'row-index';
+      idxSpan.innerHTML = (i + 1) + '.';
+      idxSpan.id = 'indicator-mistake-row-' + i;
+      idxSpan.setAttribute('data-index', (i + 1) + '.');
+      row.appendChild(idxSpan);
+
+      var btn = document.createElement('button');
+      var ready = isAudioReady(currentMistakes[i]);
+      btn.className = ready ? 'btn-play-line' : 'btn-play-line btn-fallback';
+      btn.innerHTML = ready ? '▶️ 播放' : '⏳ 播放';
+      btn.setAttribute('data-text', currentMistakes[i]); 
+      btn.onclick = (function(word, rowEl) { 
+        return function(e) { e.stopPropagation(); playSingleText(word, rowEl, true); }; 
+      })(currentMistakes[i], row);
+      row.appendChild(btn);
+
+      var txtContainer = document.createElement('span');
+      txtContainer.className = 'sentence-text word-mistake'; 
+      txtContainer.style.borderBottom = '2px solid #dc2626';
+      txtContainer.textContent = currentMistakes[i];
+      
+      txtContainer.onclick = function(e) {
+        if (document.getElementById('hideMistakeToggle').checked && e.target.tagName !== 'BUTTON') {
+           handleManualReveal(this);
+        }
+      };
+      
+      row.appendChild(txtContainer);
+      container.appendChild(row);
+
+      if (lastPlayedMistakeRowId === row.id) {
+         idxSpan.textContent = '📍';
+      }
+      if (absoluteLastPlayedRowId === row.id) {
+         row.classList.add('last-played-highlight');
+      }
+      if (currentlyPlayingRowId === row.id) {
+         row.classList.add('playing-highlight');
+      }
+    }
+  }
+
+  function setLastPlayedIndicator(rowId, isMistakeMode) {
+    if (!isMistakeMode) {
+      if (lastPlayedDictRowId && lastPlayedDictRowId !== rowId) {
+        var oldIdxSpan = document.getElementById('indicator-' + lastPlayedDictRowId);
+        if (oldIdxSpan) oldIdxSpan.innerHTML = oldIdxSpan.getAttribute('data-index');
+      }
+      lastPlayedDictRowId = rowId;
+    } else {
+      if (lastPlayedMistakeRowId && lastPlayedMistakeRowId !== rowId) {
+        var oldIdxSpanM = document.getElementById('indicator-' + lastPlayedMistakeRowId);
+        if (oldIdxSpanM) oldIdxSpanM.innerHTML = oldIdxSpanM.getAttribute('data-index');
+      }
+      lastPlayedMistakeRowId = rowId;
+    }
+    
+    var idxSpan = document.getElementById('indicator-' + rowId);
+    if (idxSpan) idxSpan.textContent = '📍';
+
+    var rows = document.querySelectorAll('.sentence-row');
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].classList.remove('last-played-highlight');
+    }
+    var newRow = document.getElementById(rowId);
+    if (newRow) newRow.classList.add('last-played-highlight');
+    
+    absoluteLastPlayedRowId = rowId;
+  }
+
+  function clearPlayingHighlight() {
+    var rows = document.querySelectorAll('.sentence-row');
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].classList.remove('playing-highlight');
+    }
+  }
+
+  // ==========================================
+  // 播放控制 (支援 GitHub 直連與 iOS 連續播放)
+  // ==========================================
+  function stopAudio() {
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    if(sharedAudio) {
+      sharedAudio.onended = null;
+      sharedAudio.onerror = null;
+      sharedAudio.pause();
+    }
+    currentAudio = null;
+    isContinuousPlaying = false;
+    currentlyPlayingRowId = null;
+    if(continuousTimer) clearTimeout(continuousTimer);
+    clearPlayingHighlight(); 
+  }
+
+  function playSingleText(textToPlay, rowElement, isMistakeMode) {
+    stopAudio(); 
+    var speed = globalSpeedValue; 
+    var voiceKey = document.getElementById('googleVoiceSelect').value.split(',')[0];
+    
+    if (rowElement) {
+      currentlyPlayingRowId = rowElement.id;
+      rowElement.classList.add('playing-highlight');
+      setLastPlayedIndicator(rowElement.id, isMistakeMode);
+    }
+    
+    var onEnd = function() { clearPlayingHighlight(); currentlyPlayingRowId = null; currentAudio = null; };
+    var audioSrc = getPlayableAudioSrc(voiceKey, textToPlay);
+
+    if (!audioSrc) {
+      var utter = new SpeechSynthesisUtterance(textToPlay);
+      utter.lang = 'en-US'; 
+      var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
+      if(enV.length > 0) utter.voice = enV[0];
+      utter.rate = speed;
+      utter.onend = onEnd;
+      utter.onerror = onEnd;
+      window.speechSynthesis.speak(utter);
+      
+      autoDownloadWord(textToPlay);
+    } else {
+      currentAudio = sharedAudio;
+      sharedAudio.src = audioSrc;
+      sharedAudio.playbackRate = speed; 
+      sharedAudio.defaultPlaybackRate = speed;
+      sharedAudio.onended = onEnd;
+      sharedAudio.onerror = onEnd;
+      
+      var playPromise = sharedAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(function(e) { onEnd(); });
+      }
+    }
+  }
+
+  function startContinuousPlay(isMistakeMode) {
+    stopAudio();
+    isMistakeContinuous = isMistakeMode; 
+    
+    if (isMistakeMode) {
+      if (currentRenderedMistakes.length === 0) return showToast('清單中沒有生字', true);
+      continuousPlayList = currentRenderedMistakes;
+    } else {
+      var currentSents = paragraphs[currentParaIndex] || [];
+      var txt = document.getElementById('textContent').value.trim();
+      if(!txt) return showToast('請先輸入課文', true);
+      if (currentSents.length === 0) return;
+      continuousPlayList = currentSents;
+    }
+    
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    isContinuousPlaying = true;
+    continuousIndex = 0;
+    playNextContinuousItem();
+  }
+
+  function playNextContinuousItem() {
+    if (!isContinuousPlaying || continuousIndex >= continuousPlayList.length) {
+      isContinuousPlaying = false;
+      clearPlayingHighlight();
+      currentlyPlayingRowId = null;
+      currentAudio = null;
+      return;
+    }
+
+    clearPlayingHighlight(); 
+    var prefix = isMistakeContinuous ? 'mistake-row-' : 'dict-row-';
+    var rowEl = document.getElementById(prefix + continuousIndex);
+    
+    if (rowEl) {
+      currentlyPlayingRowId = rowEl.id;
+      rowEl.classList.add('playing-highlight');
+      setLastPlayedIndicator(rowEl.id, isMistakeContinuous);
+    }
+
+    var speed = globalSpeedValue;
+    var pauseMs = parseFloat(document.getElementById('pauseContinuous').value) * 1000;
+    var textToPlay = continuousPlayList[continuousIndex];
+    var voiceKey = document.getElementById('googleVoiceSelect').value.split(',')[0];
+
+    var onEndFn = function() {
+      if(!isContinuousPlaying) return;
+      continuousTimer = setTimeout(function() {
+        continuousIndex++;
+        playNextContinuousItem();
+      }, pauseMs);
+    };
+
+    var onErrorFn = function() {
+      isContinuousPlaying = false;
+      clearPlayingHighlight();
+      currentlyPlayingRowId = null;
+      currentAudio = null;
+    };
+
+    var audioSrc = getPlayableAudioSrc(voiceKey, textToPlay);
+
+    if (!audioSrc) {
+      var utter = new SpeechSynthesisUtterance(textToPlay);
+      utter.lang = 'en-US'; 
+      var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
+      if(enV.length > 0) utter.voice = enV[0];
+      utter.rate = speed;
+      utter.onend = onEndFn;
+      utter.onerror = onErrorFn;
+      window.speechSynthesis.speak(utter);
+      autoDownloadWord(textToPlay);
+    } else {
+      currentAudio = sharedAudio;
+      sharedAudio.onended = onEndFn;
+      sharedAudio.onerror = onErrorFn;
+      sharedAudio.src = audioSrc;
+      sharedAudio.playbackRate = speed;
+      sharedAudio.defaultPlaybackRate = speed;
+      
+      var playPromise = sharedAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(function(err) {
+          console.error("iOS Audio Play Error:", err);
+          onErrorFn();
+        });
+      }
+    }
+  }
+
+  function toggleTextVisibility(containerId, toggleId) {
+    var container = document.getElementById(containerId);
+    var isHidden = document.getElementById(toggleId).checked;
+    if (isHidden) container.classList.add('text-hidden');
+    else container.classList.remove('text-hidden');
+    
+    if (!isHidden) {
+      var reveals = container.querySelectorAll('.manual-reveal');
+      for(var i=0; i<reveals.length; i++) reveals[i].classList.remove('manual-reveal');
+    }
+  }
+
+  function loadAppUrlAndQr() {
+    // 若在 GitHub Pages 上執行，QR Code 直接顯示當前的 GitHub Pages 網址
+    if (window.location.hostname.indexOf('github.io') !== -1) {
+      renderQrCode(window.location.href);
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(function(url) {
+        if (url) renderQrCode(url);
+      })
+      .getAppUrl();
+  }
+
+  function renderQrCode(url) {
+    var qrImg = document.getElementById('qrImg');
+    qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(url);
+    qrImg.onload = function() {
+      qrImg.style.display = 'inline-block';
+      document.getElementById('urlText').style.display = 'none';
+    };
+    qrImg.onerror = function() {
+      qrImg.style.display = 'none';
+      var txt = document.getElementById('urlText');
+      txt.textContent = url;
+      txt.style.display = 'block';
+    };
+  }
+
+  function initNativeVoices() {
+    function populate() { nativeVoices = window.speechSynthesis.getVoices(); }
+    if(window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = populate; populate(); }
+  }
+</script>
+</body>
+</html>
