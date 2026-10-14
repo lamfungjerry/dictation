@@ -375,8 +375,8 @@
     if (!iconEl) return;
     iconEl.className = '';
     if (state === 'loading') {
-      iconEl.textContent = '🔄';
-      iconEl.className = 'icon-spin';
+      iconEl.textContent = '⏳';
+      iconEl.className = 'hourglass-spin';
     } else if (state === 'unsynced') {
       iconEl.textContent = '☁️';
     } else if (state === 'cleanable') {
@@ -627,10 +627,6 @@
         document.getElementById(panels[t]).style.display = 'none';
       }
     });
-
-    if (tabId === 'sync') {
-      checkGitHubSyncStatus(false);
-    }
   }
 
   function showToast(message, isAlert) {
