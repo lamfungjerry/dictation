@@ -21,10 +21,7 @@
 
   <div class="card" id="card1">
     <div class="card-header" onclick="toggleCard('card1')">
-      <div style="display:flex; flex-direction:column; align-items:flex-start;">
-        <h2>📂 1. 課文庫與匯入</h2>
-        <span id="cloudUsageText" class="usage-detail-trigger" onclick="openStorageModal(event)">容量: 載入中... 📊</span>
-      </div>
+      <h2>📂 1. 課文庫與匯入</h2>
       <span class="card-toggle-icon">▼</span>
     </div>
     <div class="card-body">
@@ -46,7 +43,7 @@
         </div>
       </div>
 
-      <!-- 2. 同步分頁 (精簡版：只保留同步至 GitHub) -->
+      <!-- 2. 同步分頁 -->
       <div id="panelSync" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
           <span id="syncRepoLabel" style="font-size:12px; color:#64748b; font-weight:600;">檢查中...</span>
@@ -57,14 +54,13 @@
           <div class="sync-stat-box" style="border-color:#fde68a; background:#fffbeb;">
             <div style="font-size:12px; color:#b45309; font-weight:bold;">📦 待同步至 GitHub</div>
             <div id="unsyncedCountNum" class="sync-stat-num" style="color:#d97706;">-</div>
-            <div style="font-size:11px; color:#92400e;">位於 Google Drive 但未上載 GitHub</div>
+            <div style="font-size:11px; color:#92400e;">未上載之音檔與課文變更</div>
           </div>
         </div>
 
         <button id="btnSyncGh" class="btn-action" style="margin-top:0;" onclick="runGitHubSync()" disabled>☁️ 同步</button>
 
         <div id="syncErrorBox" class="sync-error-box"></div>
-        <div id="syncDetailBox" style="margin-top:12px; font-size:13px; color:#475569; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center; display:none;"></div>
       </div>
 
       <!-- 3. 新增分頁 -->
@@ -80,14 +76,14 @@
         </div>
         
         <label>課文標題：</label>
-        <input type="text" id="saveTitle" placeholder="例如：Chapter 1" oninput="markDirty()">
+        <input type="text" id="saveTitle" placeholder="例如：Chapter 1">
         
         <label>課文內容 (空行分段)：</label>
-        <textarea id="textContent" oninput="markDirty()" placeholder="請貼上或辨識課文..."></textarea>
+        <textarea id="textContent" placeholder="請貼上或辨識課文..."></textarea>
         
         <div class="row" style="margin-top:8px;">
           <button class="btn-warning col" id="mainActionBtn" onclick="breakdownTextAndDownload()">📝 儲存並下載</button>
-          <button class="btn-secondary" style="width:auto;" onclick="clearText()">清空</button>
+          <button class="btn-secondary" style="width:auto;" onclick="clearNewForm()">清空</button>
         </div>
       </div>
     </div>
@@ -106,7 +102,7 @@
         <button class="btn-secondary" style="margin:0; width:auto; padding:6px 12px;" onclick="document.getElementById('pauseContinuous').value=5">5 秒</button>
         
         <button class="btn-secondary" style="margin:0; width:36px; padding:6px; font-weight:bold; font-size:16px;" onclick="changePauseContinuous(1)">+</button>
-        <input type="number" id="pauseContinuous" value="1" min="0" max="60" step="1" style="margin:0; width:50px; padding:6px; text-align:center;">
+        <input type="number" id="pauseContinuous" value="5" min="0" max="60" step="1" style="margin:0; width:50px; padding:6px; text-align:center;">
         <button class="btn-secondary" style="margin:0; width:36px; padding:6px; font-weight:bold; font-size:16px;" onclick="changePauseContinuous(-1)">-</button>
       </div>
       
@@ -173,8 +169,8 @@
   </div>
 </div>
 
-<!-- API Key 設定視窗 -->
-<div id="keyModal" class="modal-overlay">
+<!-- API Key 設定與容量明細視窗 -->
+<div id="keyModal" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal-content">
     <h3 style="margin-top:0; margin-bottom:12px; color:#334155;">🔑 API Key 設定</h3>
 
@@ -193,6 +189,13 @@
     <label>GitHub Token (需 repo 權限)：</label>
     <div id="ghTokenStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
     <input type="text" id="ghTokenInput" placeholder="ghp_... 或 github_pat_..." style="margin-bottom:10px; display:none;">
+
+    <!-- PropertiesService 容量明細 (點擊展開) -->
+    <div class="storage-trigger-bar" onclick="toggleKeyStorageDetail()">
+      <span id="keyModalUsageText">📊 容量明細: 載入中...</span>
+      <span id="keyModalUsageArrow">▼</span>
+    </div>
+    <div id="storageDetailBody" style="display:none; margin-top:8px; font-size:12px; color:#334155;"></div>
     
     <div class="row" style="margin-top:16px;">
       <button class="btn-action col" onclick="saveKeys()">💾 儲存</button>
@@ -201,21 +204,12 @@
   </div>
 </div>
 
-<!-- 容量明細視窗 (點擊容量時顯示) -->
-<div id="storageModal" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal-content">
-    <h3 style="margin-top:0; margin-bottom:10px; color:#334155;">📊 雲端儲存容量明細</h3>
-    <div id="storageDetailBody" style="font-size:13px; color:#334155;">載入中...</div>
-    <button class="btn-secondary" onclick="document.getElementById('storageModal').style.display='none'" style="margin-top:16px;">關閉</button>
-  </div>
-</div>
-
 <div id="toast" class="toast-message">
   <span id="toastText">通知訊息</span>
   <span class="toast-close" onclick="hideToast()">關閉</span>
 </div>
 
-<div id="settingsModal" class="modal-overlay">
+<div id="settingsModal" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal-content">
     <h3 style="margin-top:0; margin-bottom:10px; color:#334155;">⚙️ 發音設定</h3>
     <select id="googleVoiceSelect" onchange="handleVoiceChange()">
@@ -308,13 +302,23 @@
   var currentAudio = null;
 
   var nativeVoices = [];
-  var currentSaveId = ""; 
+  var clientLessonsMap = {};
+  var dirtyLessonIds = {};
+
+  var currentSaveId = "";
+  var currentLessonTitle = "";
+  var currentLessonText = "";
+  var currentLessonVoices = [];
+  var currentLessonDate = 0;
+
   var paragraphs = []; 
   var paragraphMistakes = []; 
   var currentParaIndex = 0;
-  var lastParsedText = "";
   var latestStorageDetails = null;
   var currentUnsyncedCount = 0;
+
+  var modelsLoaded = false;
+  var modelsLoading = false;
 
   // 音檔播放狀態表：audioStateMap[voiceKey][text] = { source: 'github' | 'drive' | 'api', url: '...', fileId: '...', base64: '...' }
   var audioStateMap = {};
@@ -362,23 +366,125 @@
   });
 
   window.addEventListener('DOMContentLoaded', function() {
-    // 清理舊版可能殘留的 localStorage 音檔快取，釋放手機瀏覽器空間
     try { localStorage.removeItem('dictation_audio_cache'); } catch(e) {}
-    refreshCloudSaves();
-    loadModels(); 
     initNativeVoices(); 
     updateGlobalSpeedDisplay();
-    loadAppUrlAndQr(); 
-    checkGitHubSyncStatus(false); 
+    loadAppUrlAndQr();
+
+    // 步驟 1：0.1 秒極速直接從 GitHub 讀取 lessons.json
+    loadLessonsFromGitHubFast();
+
+    // 步驟 2：向 GAS 發送單一整合請求 (合併未同步暫存課文 + 檢查同步狀態)，完成後才載入 Gemini 模型
+    initFromGasBackend();
   });
 
+  // 0.1 秒極速直讀 GitHub lessons.json (若有最新 Commit SHA 則優先用 SHA 網址破除 CDN 快取)
+  function loadLessonsFromGitHubFast() {
+    var repo = getCfgRepo();
+    var branch = getCfgBranch();
+    if (!repo || repo.indexOf("請替換") !== -1) return;
+
+    var savedSha = "";
+    try { savedSha = localStorage.getItem('dictation_gh_sha_' + repo) || ""; } catch (e) {}
+    var refPart = savedSha ? savedSha : encodeURIComponent(branch);
+    var rawUrl = "https://raw.githubusercontent.com/" + repo + "/" + refPart + "/lessons.json?t=" + new Date().getTime();
+
+    fetch(rawUrl)
+      .then(function(r) {
+        if (!r.ok) throw new Error("Not found");
+        return r.json();
+      })
+      .then(function(data) {
+        if (data && data.lessons) {
+          for (var k in data.lessons) {
+            if (!clientLessonsMap[k]) clientLessonsMap[k] = data.lessons[k];
+          }
+          renderLessonSelectDropdown();
+        }
+      })
+      .catch(function() {});
+  }
+
+  // 單一開機 GAS 請求：完成後才在背景啟動 loadModels()
+  function initFromGasBackend() {
+    setSyncTabIcon('loading');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res) {
+          if (res.latestCommitSha) {
+            try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
+          }
+          if (res.lessonsMap) {
+            clientLessonsMap = res.lessonsMap;
+            renderLessonSelectDropdown();
+          }
+          if (res.storageDetails) {
+            updateStorageDetailsUI(res.storageDetails);
+          }
+          if (res.syncStatus) {
+            updateSyncStatusUI(res.syncStatus);
+          }
+        }
+        // 完成所有開機 GAS 請求後，才在背景載入 Gemini 模型
+        loadModels();
+      })
+      .withFailureHandler(function() {
+        setSyncTabIcon('error');
+        loadModels();
+      })
+      .getInitData(getCfgRepo(), getCfgBranch(), getCurrentVoiceName());
+  }
+
+  function renderLessonSelectDropdown() {
+    var sel = document.getElementById('cloudSaveSelect');
+    var list = [];
+    for (var id in clientLessonsMap) {
+      list.push(clientLessonsMap[id]);
+    }
+    list.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
+
+    sel.innerHTML = '';
+    if (list.length === 0) {
+      sel.innerHTML = '<option value="">(無紀錄)</option>';
+    } else {
+      list.forEach(function(s) {
+        var dateStr = s.date ? new Date(s.date).toLocaleDateString('zh-HK') : '';
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.title + (dateStr ? ' (' + dateStr + ')' : '');
+        if (s.id === currentSaveId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+  }
+
   // ==========================================
-  // PropertiesService 容量明細視窗
+  // API Key 視窗內的「📊 容量明細」
   // ==========================================
-  function openStorageModal(event) {
-    if (event) event.stopPropagation();
-    renderStorageModalContent();
-    document.getElementById('storageModal').style.display = 'flex';
+  function updateStorageDetailsUI(details) {
+    if (!details) return;
+    latestStorageDetails = details;
+    var txtEl = document.getElementById('keyModalUsageText');
+    if (txtEl) {
+      txtEl.textContent = '📊 容量明細: ' + details.totalKB + ' / 500 KB (' + details.totalPercent + '%)';
+    }
+    var bodyEl = document.getElementById('storageDetailBody');
+    if (bodyEl && bodyEl.style.display !== 'none') {
+      renderStorageModalContent();
+    }
+  }
+
+  function toggleKeyStorageDetail() {
+    var body = document.getElementById('storageDetailBody');
+    var arrow = document.getElementById('keyModalUsageArrow');
+    if (body.style.display === 'none') {
+      renderStorageModalContent();
+      body.style.display = 'block';
+      arrow.textContent = '▲';
+    } else {
+      body.style.display = 'none';
+      arrow.textContent = '▼';
+    }
   }
 
   function renderStorageModalContent() {
@@ -389,10 +495,9 @@
     }
     var d = latestStorageDetails;
     var html = [];
-    html.push('<div class="storage-summary-box">總使用量：<b>' + d.totalKB + ' KB</b> / 500 KB (' + d.totalPercent + '%)</div>');
 
-    // 1. 金鑰與設定
-    html.push('<div class="storage-section-title">🔑 金鑰與設定 (合共 ' + d.keysTotalKB + ' KB / ' + d.keysTotalPercent + '%)</div>');
+    // 1. 4 條 API Key
+    html.push('<div class="storage-section-title">🔑 金鑰設定 (' + d.keysTotalKB + ' KB / ' + d.keysTotalPercent + '%)</div>');
     html.push('<div class="storage-list">');
     if (d.keyItems.length === 0) {
       html.push('<div class="storage-row"><span>(尚未設定任何金鑰)</span><span>0 KB</span></div>');
@@ -403,27 +508,25 @@
     }
     html.push('</div>');
 
-    // 2. 課文清單
-    html.push('<div class="storage-section-title">📖 課文內容 (合共 ' + d.lessonsTotalKB + ' KB / ' + d.lessonsTotalPercent + '%)</div>');
-    html.push('<div class="storage-list">');
-    if (d.lessonItems.length === 0) {
-      html.push('<div class="storage-row"><span>(無已儲存課文)</span><span>0 KB</span></div>');
-    } else {
-      d.lessonItems.forEach(function(l) {
-        html.push('<div class="storage-row"><span>' + l.title + '</span><span>' + l.kb + ' KB (' + l.percent + '%)</span></div>');
-      });
-    }
-    html.push('</div>');
-
-    // 3. 其他未知/殘留項目
-    if (d.otherItems && d.otherItems.length > 0) {
-      html.push('<div class="storage-section-title" style="color:#dc2626;">⚠️ 其他殘留項目 (合共 ' + d.othersTotalKB + ' KB / ' + d.othersTotalPercent + '%)</div>');
+    // 2. 待同步課文暫存 (同步上 GitHub 後會自動歸零)
+    if (d.lessonItems && d.lessonItems.length > 0) {
+      html.push('<div class="storage-section-title">📖 待同步課文暫存 (' + d.lessonsTotalKB + ' KB / ' + d.lessonsTotalPercent + '%)</div>');
       html.push('<div class="storage-list">');
-      d.otherItems.forEach(function(o) {
-        html.push('<div class="storage-row"><span style="word-break:break-all;">' + o.key + '</span><span>' + o.kb + ' KB (' + o.percent + '%)</span></div>');
+      d.lessonItems.forEach(function(l) {
+        html.push('<div class="storage-row"><span>' + l.title + '</span><span>' + l.kb + ' KB</span></div>');
       });
       html.push('</div>');
-      html.push('<button class="btn-danger" style="margin-top:8px; padding:6px 10px; font-size:13px;" onclick="cleanOrphanProperties()">🗑️ 清除殘留項目</button>');
+    }
+
+    // 3. 其他未知/殘留項目 (如舊 GITHUB_REPO / GITHUB_BRANCH)
+    if (d.otherItems && d.otherItems.length > 0) {
+      html.push('<div class="storage-section-title" style="color:#dc2626;">⚠️ 其他殘留項目 (' + d.othersTotalKB + ' KB / ' + d.othersTotalPercent + '%)</div>');
+      html.push('<div class="storage-list">');
+      d.otherItems.forEach(function(o) {
+        html.push('<div class="storage-row"><span style="word-break:break-all;">' + o.key + '</span><span>' + o.kb + ' KB</span></div>');
+      });
+      html.push('</div>');
+      html.push('<button class="btn-danger" style="margin-top:8px; padding:6px 10px; font-size:12px;" onclick="cleanOrphanProperties()">🗑️ 清除殘留項目</button>');
     }
 
     body.innerHTML = html.join('');
@@ -432,9 +535,8 @@
   function cleanOrphanProperties() {
     showToast('清除殘留項目中...');
     google.script.run
-      .withSuccessHandler(function(res) {
-        applyCloudSavesResponse(res);
-        renderStorageModalContent();
+      .withSuccessHandler(function(details) {
+        updateStorageDetailsUI(details);
         showToast('✅ 已清除殘留項目');
       })
       .cleanOtherProperties();
@@ -479,6 +581,9 @@
     }
     google.script.run
       .withSuccessHandler(function(res) {
+        if (res && res.latestCommitSha) {
+          try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
+        }
         updateSyncStatusUI(res);
         if (forceRescan && res && !res.error) showToast('✅ 檢查完成');
       })
@@ -493,7 +598,6 @@
     currentUnsyncedCount = count || 0;
     var tabBadge = document.getElementById('tabSyncBadge');
     var btnSync = document.getElementById('btnSyncGh');
-    var detailBox = document.getElementById('syncDetailBox');
 
     document.getElementById('unsyncedCountNum').textContent = currentUnsyncedCount;
     btnSync.disabled = (currentUnsyncedCount === 0);
@@ -502,13 +606,9 @@
       tabBadge.textContent = currentUnsyncedCount;
       tabBadge.style.display = 'inline-block';
       setSyncTabIcon('unsynced');
-      detailBox.style.display = 'block';
-      detailBox.textContent = "☁️ 尚有 " + currentUnsyncedCount + " 個音檔未同步";
     } else {
       tabBadge.style.display = 'none';
       setSyncTabIcon('ok');
-      detailBox.style.display = 'block';
-      detailBox.textContent = "✅ 所有音檔已同步至 GitHub";
     }
   }
 
@@ -542,7 +642,6 @@
     setUnsyncedCounterUI(res.unsyncedCount || 0);
   }
 
-  // 同步至 GitHub (同步後不改變當前頁面的播放源，維持使用 Drive 播放直到下次 Reload)
   function runGitHubSync() {
     var btn = document.getElementById('btnSyncGh');
     btn.disabled = true;
@@ -561,19 +660,26 @@
           showSyncError(errMsg);
           return showToast("同步失敗：" + errMsg, true);
         }
+        if (res.latestCommitSha) {
+          try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
+        }
+        if (res.storageDetails) {
+          updateStorageDetailsUI(res.storageDetails);
+        }
         if (res.status) updateSyncStatusUI(res.status);
         
         if (res.remainingCount > 0) {
           btn.disabled = true;
           btn.textContent = "同步中";
           setSyncTabIcon('loading');
-          showToast("已同步 " + res.syncedCount + " 個，剩餘 " + res.remainingCount + " 個...");
+          showToast("已同步 " + res.syncedCount + " 項，剩餘 " + res.remainingCount + " 項...");
           setTimeout(function() {
             runGitHubSync();
           }, 2000);
         } else {
+          dirtyLessonIds = {};
           btn.textContent = "☁️ 同步";
-          showToast("🎉 已同步 " + res.syncedCount + " 個音檔！");
+          showToast("🎉 同步完成！");
         }
       })
       .withFailureHandler(function(err) {
@@ -591,6 +697,8 @@
   // ==========================================
   function openKeyModal() {
     google.script.run.withSuccessHandler(function(status) {
+      if (status.storageDetails) updateStorageDetailsUI(status.storageDetails);
+
       var gmStatus = document.getElementById('geminiKeyStatus');
       var gmInput = document.getElementById('geminiKeyInput');
       if (status.geminiSet) { gmStatus.style.display = 'block'; gmInput.style.display = 'none'; }
@@ -638,12 +746,12 @@
     
     document.getElementById('keyModal').style.display = 'none';
     showToast('儲存中...');
-    google.script.run.withSuccessHandler(function() {
+    google.script.run.withSuccessHandler(function(status) {
+      if (status && status.storageDetails) updateStorageDetailsUI(status.storageDetails);
       showToast('🔑 已儲存');
-      refreshCloudSaves();
-      loadModels(); 
+      if (gKey) { modelsLoaded = false; loadModels(); }
       checkGitHubSyncStatus(false);
-    }).saveApiKeys(gKey, gcpKey, azKey, ghToken, getCfgRepo(), getCfgBranch());
+    }).saveApiKeys(gKey, gcpKey, azKey, ghToken);
   }
 
   function switchTab(tabId) {
@@ -660,6 +768,11 @@
         document.getElementById(panels[t]).style.display = 'none';
       }
     });
+
+    // 點擊「➕ 新增」時若尚未載入 Gemini 模型則觸發載入 (已載入過則不會重複載入)
+    if (tabId === 'new') {
+      loadModels();
+    }
   }
 
   function showToast(message, isAlert) {
@@ -783,124 +896,119 @@
     input.value = newVal;
   }
 
-  function applyCloudSavesResponse(res) {
-    if (!res) return;
-    if (res.details) latestStorageDetails = res.details;
-    document.getElementById('cloudUsageText').textContent = '容量: ' + res.usageKB + ' / 500 KB (' + res.usagePercent + '%) 📊';
-    if (res.id) currentSaveId = res.id;
-
-    var sel = document.getElementById('cloudSaveSelect');
-    sel.innerHTML = '';
-    if (!res.saves || res.saves.length === 0) {
-      sel.innerHTML = '<option value="">(無紀錄)</option>';
-    } else {
-      res.saves.forEach(function(s) {
-        var dateStr = new Date(s.date).toLocaleDateString('zh-HK');
-        var opt = document.createElement('option');
-        opt.value = s.id; opt.textContent = s.title + ' (' + dateStr + ')';
-        if (s.id === currentSaveId) opt.selected = true;
-        sel.appendChild(opt);
-      });
-    }
-  }
-
-  function refreshCloudSaves() {
-    var sel = document.getElementById('cloudSaveSelect');
-    sel.innerHTML = '<option value="">載入中...</option>';
-    google.script.run
-      .withSuccessHandler(function(res) {
-        applyCloudSavesResponse(res);
-      })
-      .getCloudSaves();
-  }
-
+  // ==========================================
+  // 課文讀取、新增、標記生字與刪除 (無需塞入新增 inputbox)
+  // ==========================================
   function loadSelectedSave() {
     var id = document.getElementById('cloudSaveSelect').value;
-    if(!id) return showToast('請先選擇課文', true);
-    google.script.run
-      .withSuccessHandler(function(data) {
-        if(!data) return showToast('讀取失敗', true);
-        currentSaveId = data.id;
-        document.getElementById('saveTitle').value = data.title;
-        document.getElementById('textContent').value = data.text;
-        paragraphs = data.paragraphs || [];
-        paragraphMistakes = data.mistakes || [];
-        lastParsedText = data.text;
-        currentParaIndex = 0;
-        lastPlayedDictRowId = null;
-        lastPlayedMistakeRowId = null;
-        absoluteLastPlayedRowId = null;
+    if (!id) return showToast('請先選擇課文', true);
+    var data = clientLessonsMap[id];
+    if (!data) return showToast('讀取失敗', true);
 
-        updateParagraphSelector();
-        renderDictationList();
-        renderMistakeList();
-        checkAndDownloadAudio(); 
-        closeTopCards(); 
-        document.getElementById('mainActionBtn').style.display = 'none'; 
-        showToast('📂 已載入');
-      })
-      .loadCloudSave(id);
+    stopAudio();
+    currentSaveId = data.id;
+    currentLessonTitle = data.title || '未命名課文';
+    currentLessonText = data.text || '';
+    currentLessonVoices = data.voices ? data.voices.slice() : [];
+    currentLessonDate = data.date || new Date().getTime();
+
+    // 深拷貝段落與生字陣列
+    paragraphs = JSON.parse(JSON.stringify(data.paragraphs || []));
+    paragraphMistakes = JSON.parse(JSON.stringify(data.mistakes || []));
+    currentParaIndex = 0;
+    lastPlayedDictRowId = null;
+    lastPlayedMistakeRowId = null;
+    absoluteLastPlayedRowId = null;
+
+    updateParagraphSelector();
+    renderDictationList();
+    renderMistakeList();
+    checkAndDownloadAudio(); 
+    closeTopCards(); 
+    showToast('📂 已載入：' + currentLessonTitle);
   }
 
   function deleteSelectedSave() {
     var id = document.getElementById('cloudSaveSelect').value;
-    if(!id) return;
+    if (!id) return;
     showToast('刪除中...');
+    delete clientLessonsMap[id];
+    renderLessonSelectDropdown();
+
+    if (currentSaveId === id) {
+      currentSaveId = '';
+      currentLessonTitle = '';
+      currentLessonText = '';
+      paragraphs = [];
+      paragraphMistakes = [];
+      document.getElementById('paragraphSelectorContainer').style.display = 'none';
+      document.getElementById('dictationList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先讀取或新增課文</div>';
+      document.getElementById('mistakeList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先點字標記</div>';
+      stopAudio();
+    }
+
+    if (!dirtyLessonIds[id]) {
+      dirtyLessonIds[id] = true;
+      incrementUnsyncedCounter();
+    }
+
     google.script.run
       .withSuccessHandler(function(res) {
-        applyCloudSavesResponse(res);
-        showToast('🗑️ 已刪除');
+        if (res && res.storageDetails) updateStorageDetailsUI(res.storageDetails);
+        showToast('🗑️ 已刪除 (請按同步更新至 GitHub)');
       })
       .deleteCloudSave(id);
   }
 
   function autoSaveToCloud() {
-    var title = document.getElementById('saveTitle').value.trim() || '未命名課文';
-    var text = document.getElementById('textContent').value.trim();
-    if(!text) return;
+    if (!currentSaveId || !currentLessonText) return;
 
-    google.script.run
-      .withSuccessHandler(function(res) {
-        applyCloudSavesResponse(res);
-      })
-      .saveToCloud(currentSaveId, title, text, paragraphs, paragraphMistakes, getCurrentVoiceName());
-  }
-
-  function markDirty() {
-    var rawText = document.getElementById('textContent').value.trim();
-    var btn = document.getElementById('mainActionBtn');
-    if (isDownloading) return; 
-    if (rawText !== lastParsedText || paragraphs.length === 0) {
-      btn.style.display = 'block';
+    var vName = getCurrentVoiceName();
+    if (vName && currentLessonVoices.indexOf(vName) === -1) {
+      currentLessonVoices.push(vName);
     }
-  }
 
-  function clearText() {
-    document.getElementById('textContent').value = '';
-    document.getElementById('saveTitle').value = '';
-    currentSaveId = '';
-    paragraphs = [];
-    paragraphMistakes = [];
-    currentParaIndex = 0;
-    lastParsedText = "";
-    lastPlayedDictRowId = null;
-    lastPlayedMistakeRowId = null;
-    absoluteLastPlayedRowId = null;
-    document.getElementById('paragraphSelectorContainer').style.display = 'none';
-    document.getElementById('dictationList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">已清空</div>';
-    document.getElementById('mistakeList').innerHTML = '<div style="text-align:center; color:#94a3b8; padding: 10px;">請先標記生字</div>';
-    stopAudio();
-    markDirty();
-  }
+    clientLessonsMap[currentSaveId] = {
+      id: currentSaveId,
+      title: currentLessonTitle,
+      text: currentLessonText,
+      paragraphs: paragraphs,
+      mistakes: paragraphMistakes,
+      voices: currentLessonVoices,
+      date: currentLessonDate
+    };
+    renderLessonSelectDropdown();
 
-  function loadModels() {
-    var sel = document.getElementById('modelSelect');
-    var loaded = false;
+    // 若該課文在本次修改前尚未標記為待同步，立即將待同步紅字 +1
+    if (!dirtyLessonIds[currentSaveId]) {
+      dirtyLessonIds[currentSaveId] = true;
+      incrementUnsyncedCounter();
+    }
+
     google.script.run
       .withSuccessHandler(function(res) {
-        loaded = true;
+        if (res && res.storageDetails) updateStorageDetailsUI(res.storageDetails);
+      })
+      .saveToCloud(currentSaveId, currentLessonTitle, currentLessonText, paragraphs, paragraphMistakes, vName, currentLessonVoices, currentLessonDate);
+  }
+
+  function clearNewForm() {
+    document.getElementById('saveTitle').value = '';
+    document.getElementById('textContent').value = '';
+    document.getElementById('ocrStatus').textContent = '';
+  }
+
+  // 載入 Gemini 模型 (已載入或載入中則不重複請求)
+  function loadModels() {
+    if (modelsLoaded || modelsLoading) return;
+    modelsLoading = true;
+    var sel = document.getElementById('modelSelect');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        modelsLoading = false;
         sel.innerHTML = '';
         if(res && res.success && res.models && res.models.length > 0) {
+          modelsLoaded = true;
           res.models.forEach(function(m, i) {
             var opt = document.createElement('option');
             opt.value = m.id; opt.textContent = m.displayName;
@@ -912,15 +1020,11 @@
           sel.innerHTML = '<option value="">⚠️ 載入失敗 (' + errorMsg + ')</option>';
         }
       })
-      .withFailureHandler(function(err) {
-        loaded = true;
+      .withFailureHandler(function() {
+        modelsLoading = false;
         sel.innerHTML = '<option value="">⚠️ 載入失敗</option>';
       })
       .getAvailableGeminiModels();
-      
-    setTimeout(function() {
-      if (!loaded) sel.innerHTML = '<option value="">⚠️ 連線逾時</option>';
-    }, 5000);
   }
 
   function runOcr() {
@@ -942,12 +1046,11 @@
             }
             document.getElementById('textContent').value = resultText; 
             document.getElementById('ocrStatus').textContent = '成功！'; 
-            markDirty();
           } else { 
             document.getElementById('ocrStatus').textContent = '錯誤：' + res.error; 
           }
         })
-        .withFailureHandler(function(err) {
+        .withFailureHandler(function() {
           document.getElementById('ocrBtn').disabled = false;
           document.getElementById('ocrStatus').textContent = '連線錯誤';
         })
@@ -962,28 +1065,35 @@
 
   function breakdownTextAndDownload() {
     stopAudio();
+    var rawTitle = document.getElementById('saveTitle').value.trim() || '未命名課文';
     var rawText = document.getElementById('textContent').value.trim();
     if(!rawText) return showToast('請先輸入課文', true);
 
-    if (rawText !== lastParsedText) {
-      var rawParagraphs = rawText.split(/\n\s*\n/); 
-      paragraphs = [];
-      paragraphMistakes = [];
-      rawParagraphs.forEach(function(pText) {
-        var sents = splitSentences(pText);
-        if(sents.length > 0) {
-          paragraphs.push(sents);
-          paragraphMistakes.push([]); 
-        }
-      });
-      lastParsedText = rawText;
-      currentParaIndex = 0;
-      lastPlayedDictRowId = null;
-      lastPlayedMistakeRowId = null;
-      absoluteLastPlayedRowId = null;
-    }
-    
-    document.getElementById('mainActionBtn').style.display = 'none'; 
+    var rawParagraphs = rawText.split(/\n\s*\n/); 
+    paragraphs = [];
+    paragraphMistakes = [];
+    rawParagraphs.forEach(function(pText) {
+      var sents = splitSentences(pText);
+      if(sents.length > 0) {
+        paragraphs.push(sents);
+        paragraphMistakes.push([]); 
+      }
+    });
+
+    currentSaveId = 'lesson_' + new Date().getTime();
+    currentLessonTitle = rawTitle;
+    currentLessonText = rawText;
+    currentLessonVoices = [getCurrentVoiceName()];
+    currentLessonDate = new Date().getTime();
+    currentParaIndex = 0;
+    lastPlayedDictRowId = null;
+    lastPlayedMistakeRowId = null;
+    absoluteLastPlayedRowId = null;
+
+    // 儲存後自動清空「➕ 新增」輸入框並切回讀取分頁
+    clearNewForm();
+    switchTab('load');
+
     updateParagraphSelector();
     renderDictationList();
     renderMistakeList();
@@ -1020,7 +1130,13 @@
   function handleVoiceChange() {
     renderDictationList(); 
     renderMistakeList();
-    checkAndDownloadAudio();
+    if (currentSaveId && currentLessonText) {
+      var vName = getCurrentVoiceName();
+      if (currentLessonVoices.indexOf(vName) === -1) {
+        autoSaveToCloud();
+      }
+      checkAndDownloadAudio();
+    }
   }
 
   function toggleDownloadPause(event) {
@@ -1089,7 +1205,7 @@
     var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
     var voiceKey = vConfig[0];
     var langCode = vConfig[1];
-    var saveTitle = document.getElementById('saveTitle').value.trim() || '未命名課文';
+    var saveTitle = currentLessonTitle || '未命名課文';
 
     if (!audioStateMap[voiceKey]) audioStateMap[voiceKey] = {};
 
@@ -1132,7 +1248,6 @@
       .getLessonAudioStatus(saveTitle, voiceKey, allTexts, getCfgRepo(), getCfgBranch());
   }
 
-  // 將需要從 Drive 載入記憶體或需要經 API 下載的項目排入背景佇列
   function enqueuePendingAudio(voiceKey, langCode) {
     sentenceFetchQueue = [];
     wordFetchQueue = [];
@@ -1142,7 +1257,6 @@
       for (var i = 0; i < currentSents.length; i++) {
         var s = currentSents[i];
         var st = audioStateMap[voiceKey][s];
-        // 若已在 GitHub 或已載入 Base64 則無需排隊
         if (st && (st.source === 'github' || st.base64)) continue;
         if (sentenceFetchQueue.indexOf(s) === -1) sentenceFetchQueue.push(s);
       }
@@ -1164,7 +1278,6 @@
     }
 
     updateDownloadUI();
-    document.getElementById('mainActionBtn').style.display = 'none';
     if (!isDownloading && !isDownloadPaused) {
       isDownloading = true;
       fetchNextInQueue(voiceKey, langCode);
@@ -1187,7 +1300,7 @@
 
     var isSentence = sentenceFetchQueue.length > 0;
     var textToFetch = isSentence ? sentenceFetchQueue[0] : wordFetchQueue[0];
-    var saveTitle = document.getElementById('saveTitle').value.trim() || '未命名課文';
+    var saveTitle = currentLessonTitle || '未命名課文';
     var state = (audioStateMap[voiceName] && audioStateMap[voiceName][textToFetch]) || { source: 'api' };
 
     var dlBar = document.getElementById('downloadController');
@@ -1207,7 +1320,6 @@
         } else {
           dlBar.classList.remove('mode-cache');
           dlBar.classList.add('mode-api');
-          // API 新生成的音檔已存入 Google Drive，立即將「待同步」數字 +1
           incrementUnsyncedCounter();
         }
 
@@ -1232,7 +1344,6 @@
       fetchNextInQueue(voiceName, langCode); 
     };
 
-    // 若已知在 Drive 且有 fileId，直接用 ID 極速讀取
     if (state.source === 'drive' && state.fileId) {
       google.script.run
         .withSuccessHandler(successFn)
@@ -1274,11 +1385,10 @@
     }
   }
 
-  // 取得播放按鈕的外觀
   function getPlayButtonConfig(text) {
     var voiceKey = getCurrentVoiceName();
     var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][text];
-    if (st && (st.source === 'github' || st.base64)) {
+    if (st && (st.source === 'github' || st.source === 'drive')) {
       return {
         className: 'btn-play-line',
         html: '▶️ 播放'
@@ -1594,7 +1704,6 @@
       return;
     }
 
-    // 若標記為 Drive 但背景佇列尚未讀完 Base64，即時以 fileId 拉取播放
     var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][textToPlay];
     if (st && st.source === 'drive' && st.fileId) {
       google.script.run
@@ -1618,7 +1727,6 @@
       return;
     }
 
-    // 否則使用系統原生發音頂替，並觸發背景 API 下載
     var utter = new SpeechSynthesisUtterance(textToPlay);
     utter.lang = 'en-US'; 
     var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
@@ -1640,9 +1748,7 @@
       continuousPlayList = currentRenderedMistakes;
     } else {
       var currentSents = paragraphs[currentParaIndex] || [];
-      var txt = document.getElementById('textContent').value.trim();
-      if(!txt) return showToast('請先輸入課文', true);
-      if (currentSents.length === 0) return;
+      if (currentSents.length === 0) return showToast('請先讀取或新增課文', true);
       continuousPlayList = currentSents;
     }
     
