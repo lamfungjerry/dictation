@@ -16,7 +16,6 @@
   <header>
     <button class="key-btn" onclick="openKeyModal()">🔑</button>
     <h1 style="font-size:22px; margin-bottom:4px;">📖 英語讀默溫習系統</h1>
-    <p style="font-size:13px; color:#64748b;">支援 GitHub 快取、Drive 同步與盲聽</p>
     <button class="settings-btn" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
   </header>
 
@@ -1275,25 +1274,19 @@
     }
   }
 
-  // 取得播放按鈕的外觀與來源標籤 (GH / Drive / API)
+  // 取得播放按鈕的外觀
   function getPlayButtonConfig(text) {
     var voiceKey = getCurrentVoiceName();
     var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][text];
-    if (st && st.source === 'github') {
+    if (st && (st.source === 'github' || st.base64)) {
       return {
         className: 'btn-play-line',
-        html: '▶️ 播放 <span class="src-badge src-gh">GH</span>'
-      };
-    }
-    if (st && st.source === 'drive') {
-      return {
-        className: 'btn-play-line',
-        html: '▶️ 播放 <span class="src-badge src-drive">Drive</span>'
+        html: '▶️ 播放'
       };
     }
     return {
       className: 'btn-play-line btn-fallback',
-      html: '⏳ 播放 <span class="src-badge src-api">API</span>'
+      html: '⏳ 播放'
     };
   }
 
