@@ -17,11 +17,6 @@ header { text-align: center; margin-bottom: 15px; position: relative; padding-to
 .card-body { padding: 15px; border-top: 1px solid #e2e8f0; transition: 0.3s; }
 .card.collapsed .card-body { display: none; }
 
-.usage-detail-trigger {
-  font-size: 11px; color: #2563eb; margin-top: 3px; font-weight: 600;
-  text-decoration: underline; cursor: pointer; padding: 2px 0;
-}
-
 label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin: 10px 0 4px; }
 select, input, textarea, button { width: 100%; font-size: 15px; border-radius: 8px; border: 1px solid var(--border); padding: 10px; }
 select, input[type="file"], input[type="number"], input[type="text"] { background: #fff; }
@@ -45,7 +40,7 @@ button:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.7; }
 
 .row-index { font-weight: 600; color: #94a3b8; min-width: 24px; text-align: right; font-size: 14px; margin-top: 6px; display: inline-block;}
 
-.btn-play-line { width: auto; margin: 0; padding: 6px 14px; background: #10b981; border-radius: 20px; font-size: 13px; flex-shrink: 0; margin-top: 2px; transition: 0.3s; display: inline-flex; align-items: center; gap: 4px;}
+.btn-play-line { width: auto; margin: 0; padding: 6px 14px; background: #10b981; border-radius: 20px; font-size: 13px; flex-shrink: 0; margin-top: 2px; transition: 0.3s;}
 .btn-play-line:hover { background: #059669; }
 .btn-fallback { background: #f59e0b; }
 .btn-fallback:hover { background: #d97706; }
@@ -106,16 +101,17 @@ button:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.7; }
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(2px);}
 .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
-/* 容量明細彈窗樣式 */
-.storage-summary-box {
-  background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
-  padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; text-align: center;
+/* API Key 視窗內的容量明細摺疊列與清單樣式 */
+.storage-trigger-bar {
+  margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+  padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;
 }
 .storage-section-title {
-  font-weight: 700; color: #475569; margin: 10px 0 6px; font-size: 12px;
+  font-weight: 700; color: #475569; margin: 8px 0 4px; font-size: 12px;
 }
 .storage-list {
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px 10px;
 }
 .storage-row {
   display: flex; justify-content: space-between; align-items: center;
