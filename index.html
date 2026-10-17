@@ -17,7 +17,7 @@
 <div class="container">
   <header>
     <button class="key-btn" onclick="openKeyModal()">🔑</button>
-    <h1 style="font-size:22px; margin-bottom:4px;" onclick="history.back()" style="cursor: pointer;">📖 英語讀默</h1>
+    <h1 style="font-size:22px; margin-bottom:4px;" onclick="safeBack()" style="cursor: pointer;">📖 英語讀默</h1>
     <button class="settings-btn" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
   </header>
 
@@ -1874,6 +1874,13 @@
   function initNativeVoices() {
     function populate() { nativeVoices = window.speechSynthesis.getVoices(); }
     if(window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = populate; populate(); }
+  }
+
+  function safeBack() {
+    // 檢查上一頁是否屬於同一個網站
+    if (document.referrer && document.referrer.startsWith(window.location.origin)) {
+      history.back();
+    }
   }
 </script>
 </body>
