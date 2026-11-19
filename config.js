@@ -20,5 +20,31 @@ window.APP_CONFIG = {
     { value: "en-US-Chirp3-HD-Leda,en-US", label: "Chirp3 女聲" },
     { value: "en-US-Neural2-F,en-US", label: "Neural2 女聲" },
     { value: "en-US-Studio-O,en-US", label: "Studio 女聲" }
+  ],
+
+  // 5. 系統行為與播放參數
+  TTS_BATCH_SIZE: 8,       // 每次平行併發生成語音的句子數量
+  DEFAULT_SPEED: 0.80,     // 預設播放語速 (0.50 ~ 1.20)
+  DEFAULT_PAUSE_SEC: 5,    // 連播預設停頓秒數
+  BLIND_REVEAL_SEC: 5,     // 盲聽點擊單句偷看秒數
+
+  // 6. OCR 圖片辨識與港澳標點讀音轉換 Prompt
+  OCR_PROMPT: [
+    "Extract all English text from this image accurately for a Hong Kong / Macau primary school dictation.",
+    "Rules:",
+    "1. Identify the main title of the passage and put it on the very first line as:",
+    "TITLE: [Title Here]",
+    "2. Group the body text into logical paragraphs separated by a single blank line. Ignore original line wraps.",
+    "3. Convert punctuation marks into spoken English words (with spaces around them) so a TTS engine will read them aloud:",
+    '   - "," -> comma',
+    '   - "." (at the end of a sentence) -> full stop',
+    '   - "?" -> question mark',
+    '   - "!" -> exclamation mark',
+    '   - ":" (not time) -> colon',
+    '   - ";" -> semicolon',
+    '   - Opening \'"\' -> open quotation mark',
+    '   - Closing \'"\' -> close quotation mark',
+    "4. Keep apostrophes inside contractions/possessives (e.g., don't, Tim's), hyphens in compound words, times (e.g., 7:30), and title abbreviations (e.g., Mr., Mrs., Dr.) as normal symbols without expanding them.",
+    "5. Output pure plain text only, without any markdown formatting or explanations."
   ]
 };
