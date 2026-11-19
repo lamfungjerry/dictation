@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一次性版本升級工具 (用完即棄)</title>
+  <script src="config.js"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f8fafc; color: #1e293b; padding: 20px; max-width: 600px; margin: 0 auto; line-height: 1.6; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    h2 { font-size: 16px; margin-bottom: 8px; color: #2563eb; }
+    input, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; }
+    button { background: #2563eb; color: #fff; border: none; font-weight: 600; cursor: pointer; margin-top: 10px; }
+    button:disabled { background: #94a3b8; }
+    .log { background: #0f172a; color: #38bdf8; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; white-space: pre-wrap; margin-top: 12px; min-height: 80px; }
+  </style>
+</head>
+<body>
+  <h1>🛠️ 讀默系統一次性升級工具</h1>
+  <p style="font-size:13px; color:#64748b; margin-bottom:16px;">執行完畢後，請直接從 GitHub 刪除此檔案 (migrate.html) 及舊的 style.css。</p>
+
+  <div class="card">
+    <h2>步驟 1：清理瀏覽器舊快取</h2>
+    <p style="font-size:13px;">移除舊版 localStorage 音檔暫存與舊分支指標。</p>
+    <button onclick="cleanBrowserStorage()">🧹 清理本機快取</button>
+  </div>
+
+  <div class="card">
+    <h2>步驟 2：升級 GitHub 上的 lessons.json</h2>
+    <p style="font-size:13px;">自動為舊課文補上 <code>audioDir</code>（鎖定原有音檔路徑，避免改名重下載）並移除舊 Azure 語音紀錄。</p>
+    <input type="password" id="ghToken" placeholder="請貼上你的 GitHub Token (ghp_...)" style="margin-top:8px;">
+    <button id="btnUpgrade" onclick="upgradeGitHubLessons()">🚀 開始升級 lessons.json</button>
+    <div id="logBox" class="log">等待執行...</div>
+  </div>
+
+  <div class="card">
+    <h2>步驟 3：清理 GAS 舊金鑰屬性</h2>
+    <p style="font-size:13px;">打開新版 <code>index.html</code> ➔ 點擊左上角 <b>🔑</b> ➔ 展開 <b>📊 容量明細</b> ➔ 按 <b>🗑️ 清除殘留項目</b>，即可一鍵刪除舊的 <code>AZURE_TTS_API_KEY</code>、<code>GITHUB_REPO</code> 與 <code>GITHUB_BRANCH</code>。</p>
+  </div>
+
+  <script>
+    function log(msg) {
+      var box = document.getElementById('logBox');
+      box.textContent += "\n" + msg;
+    }
+
+    function sanitizeFolderName(name) {
+      var safe = (name || 'lesson').replace(/[^a-zA-Z0-9\u4e00-\u9fa5\s_-]/g, '').trim();
+      return safe || "lesson";
+    }
+
+    function utf8ToBase64(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function base64ToUtf8(b64) {
+      return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+    }
+
+    function cleanBrowserStorage() {
+      localStorage.removeItem('dictation_audio_cache');
+      var removed = 0;
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('dictation_gh_sha_') === 0) {
+          localStorage.removeItem(k);
+          removed++;
+        }
+      }
+      alert('✅ 已清理本機舊快取（共移除 ' + removed + ' 個舊快取指標）！');
+    }
+
+    async function upgradeGitHubLessons() {
+      var cfg = window.APP_CONFIG || {};
+      var repo = (cfg.GITHUB_REPO || '').trim();
+      var branch = (cfg.GITHUB_BRANCH || 'main').trim();
+      var token = document.getElementById('ghToken').value.trim();
+
+      if (!repo || repo.indexOf('請替換') !== -1) return alert('請先設定 config.js 的 GITHUB_REPO');
+      if (!token) return alert('請輸入 GitHub Token');
+
+      var btn = document.getElementById('btnUpgrade');
+      btn.disabled = true;
+      document.getElementById('logBox').textContent = '連線至 ' + repo + ' (' + branch + ')...';
+
+      var headers = {
+        "Authorization": "Bearer " + token,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json"
+      };
+
+      try {
+        var url = "https://api.github.com/repos/" + repo + "/contents/lessons.json?ref=" + encodeURIComponent(branch) + "&t=" + Date.now();
+        var res = await fetch(url, { headers: headers });
+        if (res.status === 404) {
+          log("ℹ️ GitHub 尚未有 lessons.json（無需升級，直接打開 index.html 按同步即可）。");
+          btn.disabled = false;
+          return;
+        }
+        if (!res.ok) throw new Error("讀取失敗 HTTP " + res.status);
+
+        var fileData = await res.json();
+        var parsed = JSON.parse(base64ToUtf8(fileData.content));
+        var lessons = parsed.lessons || {};
+        var count = 0;
+
+        for (var id in lessons) {
+          var item = lessons[id];
+          if (!item.audioDir) {
+            item.audioDir = sanitizeFolderName(item.title);
+          }
+          if (Array.isArray(item.voices)) {
+            item.voices = item.voices.filter(function(v) {
+              return v.indexOf('Neural') === -1 && v.indexOf('en-HK') === -1;
+            });
+          }
+          count++;
+        }
+
+        parsed.updatedAt = Date.now();
+        var putRes = await fetch("https://api.github.com/repos/" + repo + "/contents/lessons.json", {
+          method: "PUT",
+          headers: headers,
+          body: JSON.stringify({
+            message: "Upgrade lessons.json schema (add audioDir & remove Azure voices)",
+            content: utf8ToBase64(JSON.stringify(parsed)),
+            sha: fileData.sha,
+            branch: branch
+          })
+        });
+
+        if (!putRes.ok) throw new Error("寫入失敗 HTTP " + putRes.status);
+        log("✅ 成功升級 " + count + " 篇課文結構！");
+        log("🎉 全部完成！現在可以刪除 migrate.html 與 style.css。");
+      } catch (err) {
+        log("❌ 錯誤：" + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
