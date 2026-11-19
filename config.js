@@ -4,7 +4,7 @@ window.APP_CONFIG = {
   
   // 2. 存放音檔與 lessons.json 的公開 GitHub 倉庫 (格式: 帳號/倉庫名)
   GITHUB_REPO: "lamfungjerry/dictation-assets",
-  GITHUB_BRANCH: "main"
+  GITHUB_BRANCH: "main",
     
   // 3. Gemini 模型清單 (免經 GAS 查詢，0 毫秒載入)
   DEFAULT_GEMINI_MODEL: "gemini-3.6-flash",
