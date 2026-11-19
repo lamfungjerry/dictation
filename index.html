@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>英語讀默溫習系統</title>
-  <!-- 引入外部設定檔 config.js -->
   <script src="config.js"></script>
   <style>
     :root { --primary: #2563eb; --primary-hover: #1d4ed8; --bg: #f8fafc; --card-bg: #ffffff; --border: #e2e8f0; }
@@ -43,13 +42,8 @@
     .btn-danger:hover { background: #fee2e2; }
     .row { display: flex; gap: 8px; } .col { flex: 1; }
 
-    /* 課文管理按鈕列 */
-    .manage-bar {
-      display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0;
-    }
-    .manage-bar button {
-      margin-top: 0; padding: 7px 6px; font-size: 13px; flex: 1;
-    }
+    .manage-bar { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
+    .manage-bar button { margin-top: 0; padding: 7px 6px; font-size: 13px; flex: 1; }
 
     .dictation-panel { background: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; margin-top: 15px; }
 
@@ -110,7 +104,6 @@
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
-    /* API Key 視窗內的容量明細摺疊列與清單樣式 */
     .storage-trigger-bar {
       margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
       padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
@@ -206,7 +199,7 @@
         <div id="syncErrorBox" class="sync-error-box"></div>
       </div>
 
-      <!-- 3. 新增分頁 (單一 Textarea + 複製 Prompt 去 Gemini App) -->
+      <!-- 3. 新增分頁 -->
       <div id="panelNew" style="display:none;">
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:12px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -244,7 +237,7 @@
         <button class="btn-secondary" style="margin:0; width:auto; padding:6px 12px;" onclick="document.getElementById('pauseContinuous').value=5">5 秒</button>
         
         <button class="btn-secondary" style="margin:0; width:36px; padding:6px; font-weight:bold; font-size:16px;" onclick="changePauseContinuous(1)">+</button>
-        <input type="number" id="pauseContinuous" value="5" min="0" max="60" step="1" style="margin:0; width:50px; padding:6px; text-align:center;">
+        <input type="number" id="pauseContinuous" min="0" max="60" step="1" style="margin:0; width:50px; padding:6px; text-align:center;">
         <button class="btn-secondary" style="margin:0; width:36px; padding:6px; font-weight:bold; font-size:16px;" onclick="changePauseContinuous(-1)">-</button>
       </div>
       
@@ -322,7 +315,6 @@
     <div id="ghTokenStatus" style="font-size:13px; color:#10b981; font-weight:bold; margin-bottom:5px; display:none; cursor:pointer;">✅ 已設定 (點擊修改)</div>
     <input type="text" id="ghTokenInput" placeholder="ghp_... 或 github_pat_..." style="margin-bottom:10px; display:none;">
 
-    <!-- PropertiesService 容量明細 (點擊展開) -->
     <div class="storage-trigger-bar" onclick="toggleKeyStorageDetail()">
       <span id="keyModalUsageText">📊 容量明細: 載入中...</span>
       <span id="keyModalUsageArrow">▼</span>
@@ -341,7 +333,6 @@
   <span class="toast-close" onclick="hideToast()">關閉</span>
 </div>
 
-<!-- 發音設定視窗 (選項由 config.js 動態載入) -->
 <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal-content">
     <h3 style="margin-top:0; margin-bottom:10px; color:#334155;">⚙️ Google 發音設定</h3>
@@ -368,73 +359,100 @@
   <div class="floating-toggle-btn speed-toggle-btn" onclick="openSpeedBar(event)">🐰</div>
   <div class="floating-bar-content speed-bar-content" onclick="closeSpeedBar(event)">
     <span class="speed-label-text">語速</span>
-    <span id="floatingSpeedVal" class="speed-val-display">0.80x</span>
+    <span id="floatingSpeedVal" class="speed-val-display"></span>
     <button onclick="changeGlobalSpeed(0.05, event)" class="btn-secondary">+</button>
     <button onclick="changeGlobalSpeed(-0.05, event)" class="btn-secondary">-</button>
   </div>
 </div>
 
 <script>
-  var APP_CFG = window.APP_CONFIG || {};
-  function getCfgGasUrl() { return (APP_CFG.GAS_URL || "").trim(); }
-  function getCfgRepo() { return (APP_CFG.GITHUB_REPO || "").trim(); }
-  function getCfgBranch() { return (APP_CFG.GITHUB_BRANCH || "main").trim(); }
-  function getCurrentVoiceName() { return document.getElementById('googleVoiceSelect').value.split(',')[0]; }
+  var APP_CFG = window.APP_CONFIG;
 
-  var OCR_PROMPT_TEXT = [
-    "Extract all English text from this image accurately for a Hong Kong / Macau primary school dictation.",
-    "Rules:",
-    "1. Identify the main title of the passage and put it on the very first line as:",
-    "TITLE: [Title Here]",
-    "2. Group the body text into logical paragraphs separated by a single blank line. Ignore original line wraps.",
-    "3. Convert punctuation marks into spoken English words (with spaces around them) so a TTS engine will read them aloud:",
-    '   - "," -> comma',
-    '   - "." (at the end of a sentence) -> full stop',
-    '   - "?" -> question mark',
-    '   - "!" -> exclamation mark',
-    '   - ":" (not time) -> colon',
-    '   - ";" -> semicolon',
-    '   - Opening \'"\' -> open quotation mark',
-    '   - Closing \'"\' -> close quotation mark',
-    "4. Keep apostrophes inside contractions/possessives (e.g., don't, Tim's), hyphens in compound words, times (e.g., 7:30), and title abbreviations (e.g., Mr., Mrs., Dr.) as normal symbols without expanding them.",
-    "5. Output pure plain text only, without any markdown formatting or explanations."
-  ].join("\n");
-
-  (function setupGasBridge() {
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-      function createRunner(successCb, failureCb) {
-        return new Proxy({}, {
-          get: function(target, prop) {
-            if (prop === 'withSuccessHandler') return function(cb) { return createRunner(cb, failureCb); };
-            if (prop === 'withFailureHandler') return function(cb) { return createRunner(successCb, cb); };
-            return function() {
-              var args = Array.prototype.slice.call(arguments);
-              var gasUrl = getCfgGasUrl();
-              if (!gasUrl || gasUrl.indexOf("請替換") !== -1) {
-                var err = "請先檢查 config.js 設定";
-                if (failureCb) failureCb(err); else showToast(err, true);
-                return;
-              }
-              fetch(gasUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: prop, args: args })
-              })
-              .then(function(r) { return r.json(); })
-              .then(function(res) {
-                if (res.status === 'success') { if (successCb) successCb(res.data); }
-                else { if (failureCb) failureCb(res.message); else showToast(res.message, true); }
-              })
-              .catch(function(err) {
-                if (failureCb) failureCb(err);
-              });
-            };
-          }
-        });
-      }
-      window.google = { script: { run: createRunner(null, null) } };
+  function validateConfig() {
+    if (!APP_CFG || typeof APP_CFG !== 'object') {
+      throw new Error("找不到 config.js 或格式錯誤");
     }
-  })();
+    var requiredStrings = [
+      'GAS_URL', 'GITHUB_REPO', 'GITHUB_BRANCH',
+      'DEFAULT_GEMINI_MODEL', 'DEFAULT_TTS_VOICE'
+    ];
+    for (var i = 0; i < requiredStrings.length; i++) {
+      var k = requiredStrings[i];
+      if (!APP_CFG[k] || typeof APP_CFG[k] !== 'string' || !APP_CFG[k].trim() || APP_CFG[k].indexOf('請替換') !== -1) {
+        throw new Error("config.js 缺少或未設定欄位：" + k);
+      }
+    }
+    if (!Array.isArray(APP_CFG.GEMINI_MODELS) || APP_CFG.GEMINI_MODELS.length === 0) {
+      throw new Error("config.js 缺少 GEMINI_MODELS 清單");
+    }
+    if (!Array.isArray(APP_CFG.TTS_VOICES) || APP_CFG.TTS_VOICES.length === 0) {
+      throw new Error("config.js 缺少 TTS_VOICES 清單");
+    }
+    if (!Array.isArray(APP_CFG.OCR_PROMPT) || APP_CFG.OCR_PROMPT.length === 0) {
+      throw new Error("config.js 缺少 OCR_PROMPT 設定");
+    }
+    var requiredNumbers = ['TTS_BATCH_SIZE', 'DEFAULT_SPEED', 'DEFAULT_PAUSE_SEC', 'BLIND_REVEAL_SEC'];
+    for (var j = 0; j < requiredNumbers.length; j++) {
+      var nk = requiredNumbers[j];
+      if (typeof APP_CFG[nk] !== 'number' || isNaN(APP_CFG[nk]) || APP_CFG[nk] <= 0) {
+        throw new Error("config.js 數值欄位無效：" + nk);
+      }
+    }
+  }
+
+  function getCfgGasUrl() { return APP_CFG.GAS_URL.trim(); }
+  function getCfgRepo() { return APP_CFG.GITHUB_REPO.trim(); }
+  function getCfgBranch() { return APP_CFG.GITHUB_BRANCH.trim(); }
+  function getCfgOcrPrompt() { return APP_CFG.OCR_PROMPT.join("\n"); }
+
+  function getCurrentVoiceConfig() {
+    var val = document.getElementById('googleVoiceSelect').value;
+    var parts = val ? val.split(',') : [];
+    if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+      throw new Error("語音設定格式錯誤，請檢查 config.js 的 TTS_VOICES");
+    }
+    return { voiceName: parts[0].trim(), langCode: parts[1].trim() };
+  }
+
+  function getCurrentVoiceName() {
+    return getCurrentVoiceConfig().voiceName;
+  }
+
+  function setupGasBridge() {
+    function createRunner(successCb, failureCb) {
+      return new Proxy({}, {
+        get: function(target, prop) {
+          if (prop === 'withSuccessHandler') return function(cb) { return createRunner(cb, failureCb); };
+          if (prop === 'withFailureHandler') return function(cb) { return createRunner(successCb, cb); };
+          return function() {
+            var args = Array.prototype.slice.call(arguments);
+            fetch(getCfgGasUrl(), {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: prop, args: args })
+            })
+            .then(function(r) {
+              if (!r.ok) throw new Error("GAS HTTP 錯誤：" + r.status);
+              return r.json();
+            })
+            .then(function(res) {
+              if (res.status === 'success') {
+                if (successCb) successCb(res.data);
+              } else {
+                var errMsg = res.message || "GAS 回傳未知錯誤";
+                if (failureCb) failureCb(errMsg); else showToast(errMsg, true);
+              }
+            })
+            .catch(function(err) {
+              var msg = err.message || String(err);
+              if (failureCb) failureCb(msg); else showToast(msg, true);
+            });
+          };
+        }
+      });
+    }
+    window.google = { script: { run: createRunner(null, null) } };
+  }
 
   var sharedAudio = new Audio();
   sharedAudio.playsInline = true;
@@ -457,15 +475,12 @@
   var latestStorageDetails = null;
   var currentUnsyncedCount = 0;
 
-  // 音檔狀態表：audioStateMap[voiceKey][text] = { source: 'github' | 'api', url: '...', base64: '...' }
   var audioStateMap = {};
-  
   var pendingTtsQueue = []; 
   var totalTtsItems = 0;
   var completedTtsItems = 0;
   var isDownloading = false; 
   var isDownloadPaused = false;
-  var TTS_BATCH_SIZE = 8; // 每次平行併發生成 8 句
 
   var isContinuousPlaying = false;
   var continuousIndex = 0;
@@ -480,7 +495,7 @@
   var absoluteLastPlayedRowId = null; 
   var currentlyPlayingRowId = null;  
 
-  var globalSpeedValue = 0.80; 
+  var globalSpeedValue = 0;
   var speedCollapseTimer = null;
   var dlCollapseTimer = null;
   var toastTimer = null;
@@ -503,39 +518,47 @@
   });
 
   window.addEventListener('DOMContentLoaded', function() {
-    initConfigDropdowns();
-    initNativeVoices(); 
-    updateGlobalSpeedDisplay();
+    try {
+      validateConfig();
+      setupGasBridge();
 
-    // 1. 0.1 秒極速直接從 GitHub 讀取 lessons.json
-    loadLessonsFromGitHubFast();
+      globalSpeedValue = APP_CFG.DEFAULT_SPEED;
+      document.getElementById('pauseContinuous').value = APP_CFG.DEFAULT_PAUSE_SEC;
 
-    // 2. 向 GAS 發送單一整合啟動請求
-    initFromGasBackend();
+      initConfigDropdowns();
+      initNativeVoices(); 
+      updateGlobalSpeedDisplay();
+
+      loadLessonsFromGitHubFast();
+      initFromGasBackend();
+    } catch (err) {
+      setSyncTabIcon('error');
+      document.getElementById('cloudSaveSelect').innerHTML = '<option value="">❌ 設定錯誤</option>';
+      showToast("❌ " + err.message, true);
+    }
   });
 
-  // 從 config.js 初始化 Gemini 模型與 Google TTS 語音選單
   function initConfigDropdowns() {
     var modelSel = document.getElementById('modelSelect');
-    var models = APP_CFG.GEMINI_MODELS || [{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" }];
+    var models = APP_CFG.GEMINI_MODELS;
     var savedModel = "";
     try { savedModel = localStorage.getItem('dictation_selected_model') || ""; } catch (e) {}
-    var targetModel = savedModel || APP_CFG.DEFAULT_GEMINI_MODEL || models[0].id;
+    var targetModel = savedModel || APP_CFG.DEFAULT_GEMINI_MODEL;
 
     modelSel.innerHTML = '';
     models.forEach(function(m) {
       var opt = document.createElement('option');
       opt.value = m.id;
-      opt.textContent = m.name || m.id;
+      opt.textContent = m.name;
       if (m.id === targetModel) opt.selected = true;
       modelSel.appendChild(opt);
     });
 
     var voiceSel = document.getElementById('googleVoiceSelect');
-    var voices = APP_CFG.TTS_VOICES || [{ value: "en-US-Chirp3-HD-Fenrir,en-US", label: "美式男聲 - Fenrir" }];
+    var voices = APP_CFG.TTS_VOICES;
     var savedVoice = "";
     try { savedVoice = localStorage.getItem('dictation_selected_voice') || ""; } catch (e) {}
-    var targetVoice = savedVoice || APP_CFG.DEFAULT_TTS_VOICE || voices[0].value;
+    var targetVoice = savedVoice || APP_CFG.DEFAULT_TTS_VOICE;
 
     voiceSel.innerHTML = '';
     voices.forEach(function(v) {
@@ -555,8 +578,6 @@
   function loadLessonsFromGitHubFast() {
     var repo = getCfgRepo();
     var branch = getCfgBranch();
-    if (!repo || repo.indexOf("請替換") !== -1) return;
-
     var savedSha = "";
     try { savedSha = localStorage.getItem('dictation_gh_sha_' + repo) || ""; } catch (e) {}
     var refPart = savedSha ? savedSha : encodeURIComponent(branch);
@@ -564,42 +585,46 @@
 
     fetch(rawUrl)
       .then(function(r) {
-        if (!r.ok) throw new Error("Not found");
+        if (!r.ok) throw new Error("無法直讀 lessons.json (HTTP " + r.status + ")");
         return r.json();
       })
       .then(function(data) {
-        if (data && data.lessons) {
-          for (var k in data.lessons) {
-            if (!clientLessonsMap[k]) clientLessonsMap[k] = data.lessons[k];
-          }
-          renderLessonSelectDropdown();
+        if (!data || !data.lessons) throw new Error("lessons.json 格式錯誤");
+        for (var k in data.lessons) {
+          if (!clientLessonsMap[k]) clientLessonsMap[k] = data.lessons[k];
         }
+        renderLessonSelectDropdown();
       })
-      .catch(function() {});
+      .catch(function(err) {
+        showToast("⚠️ 直讀 GitHub 課文失敗：" + err.message, true);
+      });
   }
 
   function initFromGasBackend() {
     setSyncTabIcon('loading');
     google.script.run
       .withSuccessHandler(function(res) {
-        if (res) {
-          if (res.latestCommitSha) {
-            try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
-          }
-          if (res.lessonsMap) {
-            clientLessonsMap = res.lessonsMap;
-            renderLessonSelectDropdown();
-          }
-          if (res.storageDetails) {
-            updateStorageDetailsUI(res.storageDetails);
-          }
-          if (res.syncStatus) {
-            updateSyncStatusUI(res.syncStatus);
-          }
+        if (!res) {
+          setSyncTabIcon('error');
+          return showToast("❌ GAS 初始化回傳空資料", true);
+        }
+        if (res.latestCommitSha) {
+          try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
+        }
+        if (res.lessonsMap) {
+          clientLessonsMap = res.lessonsMap;
+          renderLessonSelectDropdown();
+        }
+        if (res.storageDetails) {
+          updateStorageDetailsUI(res.storageDetails);
+        }
+        if (res.syncStatus) {
+          updateSyncStatusUI(res.syncStatus);
         }
       })
-      .withFailureHandler(function() {
+      .withFailureHandler(function(err) {
         setSyncTabIcon('error');
+        showToast("❌ 啟動連線失敗：" + err, true);
       })
       .getInitData(getCfgRepo(), getCfgBranch());
   }
@@ -610,17 +635,17 @@
     for (var id in clientLessonsMap) {
       list.push(clientLessonsMap[id]);
     }
-    list.sort(function(a, b) { return (b.date || 0) - (a.date || 0); });
+    list.sort(function(a, b) { return b.date - a.date; });
 
     sel.innerHTML = '';
     if (list.length === 0) {
       sel.innerHTML = '<option value="">(無紀錄)</option>';
     } else {
       list.forEach(function(s) {
-        var dateStr = s.date ? new Date(s.date).toLocaleDateString('zh-HK') : '';
+        var dateStr = new Date(s.date).toLocaleDateString('zh-HK');
         var opt = document.createElement('option');
         opt.value = s.id;
-        opt.textContent = s.title + (dateStr ? ' (' + dateStr + ')' : '');
+        opt.textContent = s.title + ' (' + dateStr + ')';
         if (s.id === currentSaveId) opt.selected = true;
         sel.appendChild(opt);
       });
@@ -694,27 +719,7 @@
       html.push('</div>');
     }
 
-    if (d.otherItems && d.otherItems.length > 0) {
-      html.push('<div class="storage-section-title" style="color:#dc2626;">⚠️ 其他殘留項目 (' + d.othersTotalKB + ' KB / ' + d.othersTotalPercent + '%)</div>');
-      html.push('<div class="storage-list">');
-      d.otherItems.forEach(function(o) {
-        html.push('<div class="storage-row"><span style="word-break:break-all;">' + o.key + '</span><span>' + o.kb + ' KB</span></div>');
-      });
-      html.push('</div>');
-      html.push('<button class="btn-danger" style="margin-top:8px; padding:6px 10px; font-size:12px;" onclick="cleanOrphanProperties()">🗑️ 清除殘留項目</button>');
-    }
-
     body.innerHTML = html.join('');
-  }
-
-  function cleanOrphanProperties() {
-    showToast('清除殘留項目中...');
-    google.script.run
-      .withSuccessHandler(function(details) {
-        updateStorageDetailsUI(details);
-        showToast('✅ 已清除殘留項目');
-      })
-      .cleanOtherProperties();
   }
 
   // ==========================================
@@ -756,21 +761,26 @@
     }
     google.script.run
       .withSuccessHandler(function(res) {
-        if (res && res.latestCommitSha) {
+        if (!res) {
+          setSyncTabIcon('error');
+          return showSyncError("檢查同步回傳空資料");
+        }
+        if (res.latestCommitSha) {
           try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
         }
         updateSyncStatusUI(res);
-        if (forceToast && res && !res.error) showToast('✅ 檢查完成');
+        if (forceToast) showToast('✅ 檢查完成');
       })
       .withFailureHandler(function(err) {
         setSyncTabIcon('error');
-        if (forceToast) showSyncError(err);
+        showSyncError(err);
+        if (forceToast) showToast("❌ 檢查失敗：" + err, true);
       })
       .checkSyncStatus(getCfgRepo(), getCfgBranch());
   }
 
   function setUnsyncedCounterUI(count) {
-    currentUnsyncedCount = count || 0;
+    currentUnsyncedCount = count;
     var tabBadge = document.getElementById('tabSyncBadge');
     var btnSync = document.getElementById('btnSyncGh');
 
@@ -792,29 +802,8 @@
   }
 
   function updateSyncStatusUI(res) {
-    var tabBadge = document.getElementById('tabSyncBadge');
-    var repoLabel = document.getElementById('syncRepoLabel');
-    var btnSync = document.getElementById('btnSyncGh');
-
-    if (!res || !res.configured) {
-      setSyncTabIcon('error');
-      repoLabel.textContent = "未設定 GitHub";
-      document.getElementById('unsyncedCountNum').textContent = "-";
-      tabBadge.style.display = 'none';
-      btnSync.disabled = true;
-      return;
-    }
-
-    if (res.error) {
-      setSyncTabIcon('error');
-      repoLabel.textContent = "⚠️ 檢查錯誤";
-      showSyncError(res.error);
-      btnSync.disabled = true;
-      return;
-    }
-
-    repoLabel.textContent = "🐙 " + res.repo;
-    setUnsyncedCounterUI(res.unsyncedCount || 0);
+    document.getElementById('syncRepoLabel').textContent = "🐙 " + res.repo;
+    setUnsyncedCounterUI(res.unsyncedCount);
   }
 
   function runGitHubSync() {
@@ -828,12 +817,11 @@
     google.script.run
       .withSuccessHandler(function(res) {
         btn.textContent = "☁️ 同步";
-        if (!res || !res.success) {
+        if (!res) {
           btn.disabled = false;
           setSyncTabIcon('error');
-          var errMsg = res ? res.error : "未知錯誤";
-          showSyncError(errMsg);
-          return showToast("同步失敗：" + errMsg, true);
+          showSyncError("同步回傳空資料");
+          return showToast("❌ 同步失敗", true);
         }
         if (res.latestCommitSha) {
           try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
@@ -848,44 +836,44 @@
         btn.textContent = "☁️ 同步";
         setSyncTabIcon('error');
         showSyncError(err);
-        showToast("連線錯誤：" + err, true);
+        showToast("❌ 同步失敗：" + err, true);
       })
       .syncLessonsToGitHub(getCfgRepo(), getCfgBranch());
   }
 
   // ==========================================
-  // 金鑰管理 (已移除 Azure Key)
+  // 金鑰管理
   // ==========================================
   function openKeyModal() {
-    google.script.run.withSuccessHandler(function(status) {
-      if (status.storageDetails) updateStorageDetailsUI(status.storageDetails);
+    google.script.run
+      .withSuccessHandler(function(status) {
+        if (status.storageDetails) updateStorageDetailsUI(status.storageDetails);
 
-      var gmStatus = document.getElementById('geminiKeyStatus');
-      var gmInput = document.getElementById('geminiKeyInput');
-      if (status.geminiSet) { gmStatus.style.display = 'block'; gmInput.style.display = 'none'; }
-      else { gmStatus.style.display = 'none'; gmInput.style.display = 'block'; }
-      
-      var gpStatus = document.getElementById('gcpTtsKeyStatus');
-      var gpInput = document.getElementById('gcpTtsKeyInput');
-      if (status.gcpTtsSet) { gpStatus.style.display = 'block'; gpInput.style.display = 'none'; }
-      else { gpStatus.style.display = 'none'; gpInput.style.display = 'block'; }
+        var gmStatus = document.getElementById('geminiKeyStatus');
+        var gmInput = document.getElementById('geminiKeyInput');
+        if (status.geminiSet) { gmStatus.style.display = 'block'; gmInput.style.display = 'none'; }
+        else { gmStatus.style.display = 'none'; gmInput.style.display = 'block'; }
+        
+        var gpStatus = document.getElementById('gcpTtsKeyStatus');
+        var gpInput = document.getElementById('gcpTtsKeyInput');
+        if (status.gcpTtsSet) { gpStatus.style.display = 'block'; gpInput.style.display = 'none'; }
+        else { gpStatus.style.display = 'none'; gpInput.style.display = 'block'; }
 
-      var ghStatus = document.getElementById('ghTokenStatus');
-      var ghInput = document.getElementById('ghTokenInput');
-      if (status.ghTokenSet) { ghStatus.style.display = 'block'; ghInput.style.display = 'none'; }
-      else { ghStatus.style.display = 'none'; ghInput.style.display = 'block'; }
-      
-      gmStatus.onclick = function() { gmStatus.style.display='none'; gmInput.style.display='block'; gmInput.focus(); };
-      gpStatus.onclick = function() { gpStatus.style.display='none'; gpInput.style.display='block'; gpInput.focus(); };
-      ghStatus.onclick = function() { ghStatus.style.display='none'; ghInput.style.display='block'; ghInput.focus(); };
-      
-      document.getElementById('keyModal').style.display = 'flex';
-    }).withFailureHandler(function() {
-      document.getElementById('geminiKeyInput').style.display = 'block';
-      document.getElementById('gcpTtsKeyInput').style.display = 'block';
-      document.getElementById('ghTokenInput').style.display = 'block';
-      document.getElementById('keyModal').style.display = 'flex';
-    }).getApiKeysStatus();
+        var ghStatus = document.getElementById('ghTokenStatus');
+        var ghInput = document.getElementById('ghTokenInput');
+        if (status.ghTokenSet) { ghStatus.style.display = 'block'; ghInput.style.display = 'none'; }
+        else { ghStatus.style.display = 'none'; ghInput.style.display = 'block'; }
+        
+        gmStatus.onclick = function() { gmStatus.style.display='none'; gmInput.style.display='block'; gmInput.focus(); };
+        gpStatus.onclick = function() { gpStatus.style.display='none'; gpInput.style.display='block'; gpInput.focus(); };
+        ghStatus.onclick = function() { ghStatus.style.display='none'; ghInput.style.display='block'; ghInput.focus(); };
+        
+        document.getElementById('keyModal').style.display = 'flex';
+      })
+      .withFailureHandler(function(err) {
+        showToast("❌ 讀取金鑰狀態失敗：" + err, true);
+      })
+      .getApiKeysStatus();
   }
 
   function saveKeys() {
@@ -898,11 +886,16 @@
     
     document.getElementById('keyModal').style.display = 'none';
     showToast('儲存中...');
-    google.script.run.withSuccessHandler(function(status) {
-      if (status && status.storageDetails) updateStorageDetailsUI(status.storageDetails);
-      showToast('🔑 已儲存');
-      checkGitHubSyncStatus(false);
-    }).saveApiKeys(gKey, gcpKey, ghToken);
+    google.script.run
+      .withSuccessHandler(function(status) {
+        if (status && status.storageDetails) updateStorageDetailsUI(status.storageDetails);
+        showToast('🔑 已儲存');
+        checkGitHubSyncStatus(false);
+      })
+      .withFailureHandler(function(err) {
+        showToast("❌ 儲存金鑰失敗：" + err, true);
+      })
+      .saveApiKeys(gKey, gcpKey, ghToken);
   }
 
   function switchTab(tabId) {
@@ -958,13 +951,13 @@
   }
 
   function openSpeedBar(event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     document.getElementById('speedController').classList.remove('collapsed');
     resetSpeedCollapseTimer();
   }
 
   function closeSpeedBar(event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     var bar = document.getElementById('speedController');
     if (!bar.classList.contains('collapsed')) {
       bar.classList.add('collapsed');
@@ -973,7 +966,7 @@
   }
 
   function changeGlobalSpeed(delta, event) {
-    if(event) event.stopPropagation(); 
+    if (event) event.stopPropagation(); 
     globalSpeedValue += delta;
     if (globalSpeedValue < 0.5) globalSpeedValue = 0.5;
     if (globalSpeedValue > 1.2) globalSpeedValue = 1.2;
@@ -999,13 +992,13 @@
   }
 
   function openDownloadBar(event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     document.getElementById('downloadController').classList.remove('collapsed');
     resetDlCollapseTimer();
   }
 
   function closeDownloadBar(event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     var bar = document.getElementById('downloadController');
     if (!bar.classList.contains('collapsed')) {
       bar.classList.add('collapsed');
@@ -1017,7 +1010,7 @@
   function closeTopCards() { document.getElementById('card1').classList.add('collapsed'); }
 
   function stopGlobalPlayback(event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     stopAudio();
   }
 
@@ -1036,30 +1029,33 @@
 
   function changePauseContinuous(delta) {
     var input = document.getElementById('pauseContinuous');
-    var newVal = parseInt(input.value) + delta;
+    var newVal = parseInt(input.value, 10) + delta;
+    if (isNaN(newVal)) newVal = APP_CFG.DEFAULT_PAUSE_SEC;
     if (newVal < 0) newVal = 0;
     if (newVal > 60) newVal = 60;
     input.value = newVal;
   }
 
   // ==========================================
-  // 課文管理：讀取、改名 (保留 audioDir)、補齊音檔、刪除
+  // 課文管理：讀取、改名、補齊音檔、刪除
   // ==========================================
   function loadSelectedSave(keepCardOpen) {
     var id = document.getElementById('cloudSaveSelect').value;
     if (!id) return showToast('請先選擇課文', true);
     var data = clientLessonsMap[id];
-    if (!data) return showToast('讀取失敗', true);
+    if (!data || !data.title || !data.audioDir || !data.paragraphs) {
+      return showToast('❌ 課文資料結構不完整，請先執行 migrate.html 升級', true);
+    }
 
     stopAudio();
     currentSaveId = data.id;
-    currentLessonTitle = data.title || '未命名課文';
-    currentLessonAudioDir = data.audioDir || currentLessonTitle;
-    currentLessonText = data.text || '';
+    currentLessonTitle = data.title;
+    currentLessonAudioDir = data.audioDir;
+    currentLessonText = data.text;
     currentLessonVoices = data.voices ? data.voices.slice() : [];
-    currentLessonDate = data.date || new Date().getTime();
+    currentLessonDate = data.date;
 
-    paragraphs = JSON.parse(JSON.stringify(data.paragraphs || []));
+    paragraphs = JSON.parse(JSON.stringify(data.paragraphs));
     paragraphMistakes = JSON.parse(JSON.stringify(data.mistakes || []));
     currentParaIndex = 0;
     lastPlayedDictRowId = null;
@@ -1084,7 +1080,6 @@
     if (!newTitle || newTitle === target.title) return;
 
     target.title = newTitle;
-    if (!target.audioDir) target.audioDir = newTitle;
     if (currentSaveId === id) currentLessonTitle = newTitle;
 
     renderLessonSelectDropdown();
@@ -1098,6 +1093,9 @@
         if (res && res.storageDetails) updateStorageDetailsUI(res.storageDetails);
         showToast('✏️ 已改名為「' + newTitle + '」');
       })
+      .withFailureHandler(function(err) {
+        showToast('❌ 改名儲存失敗：' + err, true);
+      })
       .saveToCloud(target.id, target.title, target.audioDir, target.text, target.paragraphs, target.mistakes, getCurrentVoiceName(), target.voices, target.date);
   }
 
@@ -1110,8 +1108,8 @@
 
   function deleteSelectedSave() {
     var id = document.getElementById('cloudSaveSelect').value;
-    if (!id || !clientLessonsMap[id]) return;
-    var title = clientLessonsMap[id].title || '此課文';
+    if (!id || !clientLessonsMap[id]) return showToast('請先選擇課文', true);
+    var title = clientLessonsMap[id].title;
     if (!confirm('確定要刪除「' + title + '」嗎？')) return;
 
     showToast('刪除中...');
@@ -1140,6 +1138,9 @@
       .withSuccessHandler(function(res) {
         if (res && res.storageDetails) updateStorageDetailsUI(res.storageDetails);
         showToast('🗑️ 已刪除（請按同步更新至 GitHub）');
+      })
+      .withFailureHandler(function(err) {
+        showToast('❌ 刪除失敗：' + err, true);
       })
       .deleteCloudSave(id);
   }
@@ -1173,6 +1174,9 @@
       .withSuccessHandler(function(res) {
         if (res && res.storageDetails) updateStorageDetailsUI(res.storageDetails);
       })
+      .withFailureHandler(function(err) {
+        showToast('❌ 自動儲存失敗：' + err, true);
+      })
       .saveToCloud(currentSaveId, currentLessonTitle, currentLessonAudioDir, currentLessonText, paragraphs, paragraphMistakes, vName, currentLessonVoices, currentLessonDate);
   }
 
@@ -1180,20 +1184,19 @@
   // 新增課文、複製 Prompt 與標點符號分句
   // ==========================================
   function copyOcrPrompt() {
+    var promptStr = getCfgOcrPrompt();
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(OCR_PROMPT_TEXT).then(function() {
-        showToast('📋 已複製 Prompt，請貼到 Gemini App！');
-      }).catch(function() {
-        fallbackCopyPrompt();
-      });
+      navigator.clipboard.writeText(promptStr)
+        .then(function() { showToast('📋 已複製 Prompt，請貼到 Gemini App！'); })
+        .catch(function() { fallbackCopyPrompt(promptStr); });
     } else {
-      fallbackCopyPrompt();
+      fallbackCopyPrompt(promptStr);
     }
   }
 
-  function fallbackCopyPrompt() {
+  function fallbackCopyPrompt(promptStr) {
     var ta = document.createElement('textarea');
-    ta.value = OCR_PROMPT_TEXT;
+    ta.value = promptStr;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
@@ -1210,6 +1213,9 @@
   function runOcr() {
     var fileInput = document.getElementById('imageUpload');
     if (!fileInput.files[0]) return showToast('請先選擇圖片', true);
+    var selectedModel = document.getElementById('modelSelect').value;
+    if (!selectedModel) return showToast('❌ 請先選擇 Gemini 模型', true);
+
     document.getElementById('ocrBtn').disabled = true;
     document.getElementById('ocrStatus').textContent = '辨識中...';
     var reader = new FileReader();
@@ -1217,23 +1223,23 @@
       google.script.run
         .withSuccessHandler(function(res) {
           document.getElementById('ocrBtn').disabled = false;
-          if (res.success) { 
-            document.getElementById('newLessonInput').value = res.text; 
-            document.getElementById('ocrStatus').textContent = '辨識成功！請檢查下方內容後按「儲存並下載」'; 
-          } else { 
-            document.getElementById('ocrStatus').textContent = '錯誤：' + res.error; 
+          if (!res || !res.text) {
+            document.getElementById('ocrStatus').textContent = '錯誤：未取得辨識文字';
+            return;
           }
+          document.getElementById('newLessonInput').value = res.text; 
+          document.getElementById('ocrStatus').textContent = '辨識成功！請檢查下方內容後按「儲存並下載」'; 
         })
-        .withFailureHandler(function() {
+        .withFailureHandler(function(err) {
           document.getElementById('ocrBtn').disabled = false;
-          document.getElementById('ocrStatus').textContent = '連線超時（建議改用上方「複製 Prompt」貼至 Gemini App）';
+          document.getElementById('ocrStatus').textContent = '錯誤：' + err;
+          showToast('❌ OCR 失敗：' + err, true);
         })
-        .processImageWithGemini(e.target.result, document.getElementById('modelSelect').value);
+        .processImageWithGemini(e.target.result, selectedModel, getCfgOcrPrompt());
     };
     reader.readAsDataURL(fileInput.files[0]);
   }
 
-  // 同時支援「讀出標點符號 (full stop / question mark / exclamation mark)」與傳統標點分句
   function splitSentences(text) {
     var processed = text
       .replace(/\b((?:full stop|question mark|exclamation mark)(?:\s+close quotation mark)?)\b/gi, "$1|")
@@ -1251,18 +1257,13 @@
     var rawInput = document.getElementById('newLessonInput').value.trim();
     if (!rawInput) return showToast('請先貼上或輸入課文', true);
 
-    var rawTitle = '未命名課文';
-    var bodyText = rawInput;
     var lines = rawInput.split(/\n/);
-
-    if (lines[0].match(/^TITLE:\s*(.+)/i)) {
-      rawTitle = lines[0].replace(/^TITLE:\s*/i, '').trim() || '未命名課文';
-      bodyText = lines.slice(1).join('\n').trim();
-    } else if (lines[0].trim().length > 0) {
-      rawTitle = lines[0].trim().substring(0, 30);
+    if (!lines[0].match(/^TITLE:\s*(.+)/i)) {
+      return showToast('❌ 格式錯誤：第一行必須以 TITLE: 開頭（例如 TITLE: Chapter 1）', true);
     }
-
-    if (!bodyText) return showToast('課文內容不可為空', true);
+    var rawTitle = lines[0].replace(/^TITLE:\s*/i, '').trim();
+    var bodyText = lines.slice(1).join('\n').trim();
+    if (!rawTitle || !bodyText) return showToast('❌ 標題與課文內容不可為空', true);
 
     var rawParagraphs = bodyText.split(/\n\s*\n/); 
     paragraphs = [];
@@ -1275,7 +1276,7 @@
       }
     });
 
-    if (paragraphs.length === 0) return showToast('無法解析課文句子', true);
+    if (paragraphs.length === 0) return showToast('❌ 無法解析課文句子', true);
 
     currentSaveId = 'lesson_' + new Date().getTime();
     currentLessonTitle = rawTitle;
@@ -1319,7 +1320,7 @@
 
   function changeParagraph() {
     stopAudio();
-    currentParaIndex = parseInt(document.getElementById('paragraphSelect').value);
+    currentParaIndex = parseInt(document.getElementById('paragraphSelect').value, 10);
     renderDictationList();
     renderMistakeList();
   }
@@ -1351,8 +1352,8 @@
       icon.classList.remove('hourglass-spin'); 
     } else if (!isDownloading) {
       isDownloading = true;
-      var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
-      processNextTtsBatch(vConfig[0], vConfig[1]);
+      var vCfg = getCurrentVoiceConfig();
+      processNextTtsBatch(vCfg.voiceName, vCfg.langCode);
     }
   }
 
@@ -1384,14 +1385,16 @@
   }
 
   // ==========================================
-  // 平行併發 TTS 生成 + 自動同步上 GitHub (零 Drive 依賴)
+  // 平行併發 TTS 生成 + 自動同步上 GitHub
   // ==========================================
   function checkAndDownloadAudio() {
-    var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
-    var voiceKey = vConfig[0];
-    var langCode = vConfig[1];
-    var audioDir = currentLessonAudioDir || currentLessonTitle || 'lesson';
+    var vCfg = getCurrentVoiceConfig();
+    var voiceKey = vCfg.voiceName;
+    var langCode = vCfg.langCode;
 
+    if (!currentLessonAudioDir) {
+      return showToast('❌ 缺少課文音檔目錄 (audioDir)', true);
+    }
     if (!audioStateMap[voiceKey]) audioStateMap[voiceKey] = {};
 
     var allTexts = [];
@@ -1406,27 +1409,28 @@
 
     google.script.run
       .withSuccessHandler(function(res) {
-        if (res && res.items) {
-          for (var t in res.items) {
-            var existing = audioStateMap[voiceKey][t] || {};
-            var info = res.items[t];
-            if (info.source === 'github') {
-              audioStateMap[voiceKey][t] = { source: 'github', url: info.url };
-            } else if (!existing.base64) {
-              audioStateMap[voiceKey][t] = { source: 'api' };
-            }
-            updateRowButtonUI(t);
-          }
+        if (!res || !res.items) {
+          return showToast('❌ 檢查音檔狀態回傳異常', true);
         }
-        if (res && res.syncStatus && res.syncStatus.configured) {
+        for (var t in res.items) {
+          var existing = audioStateMap[voiceKey][t] || {};
+          var info = res.items[t];
+          if (info.source === 'github') {
+            audioStateMap[voiceKey][t] = { source: 'github', url: info.url };
+          } else if (!existing.base64) {
+            audioStateMap[voiceKey][t] = { source: 'api' };
+          }
+          updateRowButtonUI(t);
+        }
+        if (res.syncStatus) {
           updateSyncStatusUI(res.syncStatus);
         }
         enqueueMissingTts(voiceKey, langCode);
       })
-      .withFailureHandler(function() {
-        enqueueMissingTts(voiceKey, langCode);
+      .withFailureHandler(function(err) {
+        showToast('❌ 檢查 GitHub 音檔失敗：' + err, true);
       })
-      .getLessonAudioStatus(audioDir, voiceKey, allTexts, getCfgRepo(), getCfgBranch());
+      .getLessonAudioStatus(currentLessonAudioDir, voiceKey, allTexts, getCfgRepo(), getCfgBranch());
   }
 
   function enqueueMissingTts(voiceKey, langCode) {
@@ -1477,38 +1481,31 @@
     }
 
     updateDownloadUI(false);
-    var batch = pendingTtsQueue.slice(0, TTS_BATCH_SIZE);
-    var audioDir = currentLessonAudioDir || currentLessonTitle || 'lesson';
+    var batch = pendingTtsQueue.slice(0, APP_CFG.TTS_BATCH_SIZE);
 
     google.script.run
       .withSuccessHandler(function(res) {
-        if (!res || !res.success) {
+        if (!res || !res.audioMap) {
           isDownloading = false;
-          updateDownloadUI(false, true, res ? res.error : "生成失敗");
+          updateDownloadUI(false, true, "回傳音檔資料異常");
           pendingTtsQueue = [];
           return;
         }
 
-        if (res.audioMap) {
-          for (var text in res.audioMap) {
-            audioStateMap[voiceName][text] = {
-              source: 'api',
-              base64: res.audioMap[text]
-            };
-            updateRowButtonUI(text);
-          }
+        for (var text in res.audioMap) {
+          audioStateMap[voiceName][text] = {
+            source: 'api',
+            base64: res.audioMap[text]
+          };
+          updateRowButtonUI(text);
         }
 
-        if (res.syncedToGitHub) {
-          if (res.latestCommitSha) {
-            try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
-          }
-          if (res.storageDetails) updateStorageDetailsUI(res.storageDetails);
-          dirtyLessonIds = {};
-          setUnsyncedCounterUI(res.unsyncedCount || 0);
-        } else if (res.syncError) {
-          showToast('音檔已生成，但自動同步 GitHub 失敗：' + res.syncError, true);
+        if (res.latestCommitSha) {
+          try { localStorage.setItem('dictation_gh_sha_' + getCfgRepo(), res.latestCommitSha); } catch (e) {}
         }
+        if (res.storageDetails) updateStorageDetailsUI(res.storageDetails);
+        dirtyLessonIds = {};
+        setUnsyncedCounterUI(res.unsyncedCount);
 
         pendingTtsQueue.splice(0, batch.length);
         completedTtsItems += batch.length;
@@ -1518,13 +1515,14 @@
         isDownloading = false;
         updateDownloadUI(false, true, err);
         pendingTtsQueue = [];
+        showToast('❌ 生成或同步語音失敗：' + err, true);
       })
-      .generateAndSyncBatchTTS(audioDir, voiceName, langCode, batch, getCfgRepo(), getCfgBranch());
+      .generateAndSyncBatchTTS(currentLessonAudioDir, voiceName, langCode, batch, getCfgRepo(), getCfgBranch());
   }
 
   function autoDownloadWord(word) {
-    var vConfig = document.getElementById('googleVoiceSelect').value.split(',');
-    var voiceKey = vConfig[0];
+    var vCfg = getCurrentVoiceConfig();
+    var voiceKey = vCfg.voiceName;
     if (!audioStateMap[voiceKey]) audioStateMap[voiceKey] = {};
     var st = audioStateMap[voiceKey][word];
     if (st && (st.source === 'github' || st.base64)) return;
@@ -1539,11 +1537,10 @@
 
     if (!isDownloading && !isDownloadPaused) {
       isDownloading = true;
-      processNextTtsBatch(vConfig[0], vConfig[1]);
+      processNextTtsBatch(vCfg.voiceName, vCfg.langCode);
     }
   }
 
-  // 統一顯示 ▶️ 播放 / ⏳ 播放，不顯示來源標籤
   function getPlayButtonConfig(text) {
     var voiceKey = getCurrentVoiceName();
     var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][text];
@@ -1581,7 +1578,7 @@
       if (el.revealTimer) clearTimeout(el.revealTimer);
       el.revealTimer = setTimeout(function() {
         el.classList.remove('manual-reveal');
-      }, 5000);
+      }, APP_CFG.BLIND_REVEAL_SEC * 1000);
     }
   }
 
@@ -1814,8 +1811,8 @@
   }
 
   function stopAudio() {
-    if(window.speechSynthesis) window.speechSynthesis.cancel();
-    if(sharedAudio) {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (sharedAudio) {
       sharedAudio.onended = null;
       sharedAudio.onerror = null;
       sharedAudio.pause();
@@ -1823,14 +1820,15 @@
     currentAudio = null;
     isContinuousPlaying = false;
     currentlyPlayingRowId = null;
-    if(continuousTimer) clearTimeout(continuousTimer);
+    if (continuousTimer) clearTimeout(continuousTimer);
     clearPlayingHighlight(); 
   }
 
   function playSingleText(textToPlay, rowElement, isMistakeMode) {
     stopAudio(); 
     var speed = globalSpeedValue; 
-    var voiceKey = getCurrentVoiceName();
+    var vCfg = getCurrentVoiceConfig();
+    var voiceKey = vCfg.voiceName;
     
     if (rowElement) {
       currentlyPlayingRowId = rowElement.id;
@@ -1854,9 +1852,9 @@
     }
 
     var utter = new SpeechSynthesisUtterance(textToPlay);
-    utter.lang = 'en-US'; 
+    utter.lang = vCfg.langCode;
     var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
-    if(enV.length > 0) utter.voice = enV[0];
+    if (enV.length > 0) utter.voice = enV[0];
     utter.rate = speed;
     utter.onend = onEnd;
     utter.onerror = onEnd;
@@ -1907,12 +1905,15 @@
     }
 
     var speed = globalSpeedValue;
-    var pauseMs = parseFloat(document.getElementById('pauseContinuous').value) * 1000;
+    var pauseVal = parseFloat(document.getElementById('pauseContinuous').value);
+    if (isNaN(pauseVal) || pauseVal < 0) return showToast('❌ 連播停頓秒數無效', true);
+    var pauseMs = pauseVal * 1000;
     var textToPlay = continuousPlayList[continuousIndex];
-    var voiceKey = getCurrentVoiceName();
+    var vCfg = getCurrentVoiceConfig();
+    var voiceKey = vCfg.voiceName;
 
     var onEndFn = function() {
-      if(!isContinuousPlaying) return;
+      if (!isContinuousPlaying) return;
       continuousTimer = setTimeout(function() {
         continuousIndex++;
         playNextContinuousItem();
@@ -1930,9 +1931,9 @@
 
     if (!audioSrc) {
       var utter = new SpeechSynthesisUtterance(textToPlay);
-      utter.lang = 'en-US'; 
+      utter.lang = vCfg.langCode;
       var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
-      if(enV.length > 0) utter.voice = enV[0];
+      if (enV.length > 0) utter.voice = enV[0];
       utter.rate = speed;
       utter.onend = onEndFn;
       utter.onerror = onErrorFn;
@@ -1948,10 +1949,7 @@
       
       var playPromise = sharedAudio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(function(err) {
-          console.error("iOS Audio Play Error:", err);
-          onErrorFn();
-        });
+        playPromise.catch(function() { onErrorFn(); });
       }
     }
   }
@@ -1970,7 +1968,7 @@
 
   function initNativeVoices() {
     function populate() { nativeVoices = window.speechSynthesis.getVoices(); }
-    if(window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = populate; populate(); }
+    if (window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = populate; populate(); }
   }
 </script>
 </body>
