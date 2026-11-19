@@ -19,6 +19,6 @@ window.APP_CONFIG = {
     { value: "en-US-Chirp3-HD-Fenrir,en-US", label: "Chirp3 男聲" },
     { value: "en-US-Chirp3-HD-Leda,en-US", label: "Chirp3 女聲" },
     { value: "en-US-Neural2-F,en-US", label: "Neural2 女聲" },
-    { value: "en-US-Studio-O,en-US", label: "Studio 女聲" },
+    { value: "en-US-Studio-O,en-US", label: "Studio 女聲" }
   ]
 };
