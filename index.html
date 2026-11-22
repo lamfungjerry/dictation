@@ -29,7 +29,7 @@
     label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin: 10px 0 4px; }
     select, input, textarea, button { width: 100%; font-size: 15px; border-radius: 8px; border: 1px solid var(--border); padding: 10px; }
     select, input[type="file"], input[type="number"], input[type="text"] { background: #fff; }
-    textarea { resize: vertical; min-height: 180px; line-height: 1.5; }
+    textarea { resize: vertical; min-height: 180px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 
     button { background: var(--primary); color: #fff; border: none; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
     button:hover { background: var(--primary-hover); }
@@ -214,8 +214,8 @@
           <div id="ocrStatus" style="font-size: 12px; color: #2563eb; margin-top: 4px;"></div>
         </div>
         
-        <label style="margin-top:0;">課文內容 (包含 TITLE、=== DISPLAY === 與 === SPOKEN ===)：</label>
-        <textarea id="newLessonInput" placeholder="TITLE: Chapter 1&#10;&#10;=== DISPLAY ===&#10;Today is Sunday, we go to the park.&#10;&#10;=== SPOKEN ===&#10;Today is Sunday comma we go to the park full stop"></textarea>
+        <label style="margin-top:0;">課文 JSON 內容 (由 API 提取或貼上 Gemini App JSON 回覆)：</label>
+        <textarea id="newLessonInput" placeholder='{&#10;  "title": "Chapter 1",&#10;  "paragraphs": [&#10;    [&#10;      { "d": "Today is Sunday, we go to the park.", "s": "Today is Sunday comma we go to the park full stop" }&#10;    ]&#10;  ]&#10;}'></textarea>
         
         <div class="row" style="margin-top:8px;">
           <button class="btn-warning col" onclick="breakdownTextAndDownload()">📝 儲存並下載</button>
@@ -469,7 +469,6 @@
   var currentLessonVoices = [];
   var currentLessonDate = 0;
 
-  // paragraphs 結構：[ [ { d: "顯示原文", s: "朗讀標點版" }, ... ], ... ]
   var paragraphs = []; 
   var paragraphMistakes = []; 
   var currentParaIndex = 0;
@@ -582,7 +581,7 @@
     var savedSha = "";
     try { savedSha = localStorage.getItem('dictation_gh_sha_' + repo) || ""; } catch (e) {}
     var refPart = savedSha ? savedSha : encodeURIComponent(branch);
-    var rawUrl = "https://raw.githubusercontent.com/" + repo + "/" + refPart + "/lessons.json?t=" + new Date().getTime();
+    var rawUrl = "[https://raw.githubusercontent.com/](https://raw.githubusercontent.com/)" + repo + "/" + refPart + "/lessons.json?t=" + new Date().getTime();
 
     fetch(rawUrl)
       .then(function(r) {
@@ -1045,11 +1044,7 @@
     if (!id) return showToast('請先選擇課文', true);
     var data = clientLessonsMap[id];
     if (!data || !data.title || !data.audioDir || !Array.isArray(data.paragraphs) || data.paragraphs.length === 0) {
-      return showToast('❌ 課文資料結構不完整，請刪除後重新新增', true);
-    }
-    var firstSent = data.paragraphs[0][0];
-    if (!firstSent || typeof firstSent !== 'object' || !firstSent.d || !firstSent.s) {
-      return showToast('❌ 此課文為舊格式，請刪除後以新版雙軌格式重新新增', true);
+      return showToast('❌ 課文資料結構無效', true);
     }
 
     stopAudio();
@@ -1186,7 +1181,7 @@
   }
 
   // ==========================================
-  // 新增課文、複製 Prompt 與雙軌分句 (DISPLAY 原文 + SPOKEN 朗讀)
+  // 新增課文、複製 Prompt 與 JSON 解析
   // ==========================================
   function copyOcrPrompt() {
     var promptStr = getCfgOcrPrompt();
@@ -1233,7 +1228,7 @@
             return;
           }
           document.getElementById('newLessonInput').value = res.text; 
-          document.getElementById('ocrStatus').textContent = '辨識成功！請檢查下方內容後按「儲存並下載」'; 
+          document.getElementById('ocrStatus').textContent = '辨識成功！請檢查下方 JSON 後按「儲存並下載」'; 
         })
         .withFailureHandler(function(err) {
           document.getElementById('ocrBtn').disabled = false;
@@ -1245,93 +1240,65 @@
     reader.readAsDataURL(fileInput.files[0]);
   }
 
-  // 切分顯示原文 (保留稱謂縮寫如 Mr. / Dr. 不誤斷句)
-  function splitDisplaySentences(text) {
-    var safe = text.replace(/\b(Mr|Mrs|Ms|Dr|St)\./gi, "$1__ABBR_DOT__");
-    var processed = safe
-      .replace(/([.?!]["”'’]?)\s*(?=[A-Za-z0-9"“'‘])/g, "$1|")
-      .replace(/\n/g, "|");
-    return processed.split("|").map(function(s) {
-      return s.replace(/__ABBR_DOT__/g, ".").replace(/\s+/g, " ").trim();
-    }).filter(function(s) {
-      return s.length > 0;
-    });
-  }
-
-  // 切分朗讀文本 (按 full stop / question mark / exclamation mark 斷句)
-  function splitSpokenSentences(text) {
-    var processed = text
-      .replace(/\b((?:full stop|question mark|exclamation mark)(?:\s+close quotation mark)?)\b/gi, "$1|")
-      .replace(/\n/g, "|");
-    return processed.split("|").map(function(s) {
-      return s.replace(/\s+/g, " ").trim();
-    }).filter(function(s) {
-      return s.length > 0;
-    });
-  }
-
   function breakdownTextAndDownload() {
     stopAudio();
     var rawInput = document.getElementById('newLessonInput').value.trim();
-    if (!rawInput) return showToast('請先貼上或輸入課文', true);
+    if (!rawInput) return showToast('請先貼上或提取課文 JSON', true);
 
-    var titleMatch = rawInput.match(/^TITLE:\s*(.+)/im);
-    if (!titleMatch) {
-      return showToast('❌ 格式錯誤：缺少 TITLE: 標題行', true);
-    }
-    var rawTitle = titleMatch[1].trim();
-    if (!rawTitle) return showToast('❌ 標題不可為空', true);
+    var cleanedJsonStr = rawInput
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
 
-    var parts = rawInput.split(/===\s*SPOKEN\s*===/i);
-    if (parts.length !== 2) {
-      return showToast('❌ 格式錯誤：必須同時包含 === DISPLAY === 與 === SPOKEN === 兩個區塊', true);
-    }
-
-    var displayHeaderSplit = parts[0].split(/===\s*DISPLAY\s*===/i);
-    if (displayHeaderSplit.length !== 2) {
-      return showToast('❌ 格式錯誤：找不到 === DISPLAY === 標記', true);
+    var parsed;
+    try {
+      parsed = JSON.parse(cleanedJsonStr);
+    } catch (e) {
+      return showToast('❌ JSON 格式錯誤：' + e.message, true);
     }
 
-    var displayBody = displayHeaderSplit[1].trim();
-    var spokenBody = parts[1].trim();
-    if (!displayBody || !spokenBody) {
-      return showToast('❌ DISPLAY 或 SPOKEN 內容不可為空', true);
+    if (!parsed || typeof parsed !== 'object') {
+      return showToast('❌ JSON 結構無效', true);
     }
-
-    var displayParas = displayBody.split(/\n\s*\n/);
-    var spokenParas = spokenBody.split(/\n\s*\n/);
-
-    if (displayParas.length !== spokenParas.length) {
-      return showToast('❌ 段落數量不一致：DISPLAY 有 ' + displayParas.length + ' 段，SPOKEN 有 ' + spokenParas.length + ' 段', true);
+    var rawTitle = (parsed.title || '').trim();
+    if (!rawTitle) {
+      return showToast('❌ JSON 缺少 title 標題欄位', true);
+    }
+    if (!Array.isArray(parsed.paragraphs) || parsed.paragraphs.length === 0) {
+      return showToast('❌ JSON 缺少有效的 paragraphs 陣列', true);
     }
 
     paragraphs = [];
     paragraphMistakes = [];
 
-    for (var p = 0; p < displayParas.length; p++) {
-      var dSents = splitDisplaySentences(displayParas[p]);
-      var sSents = splitSpokenSentences(spokenParas[p]);
+    for (var p = 0; p < parsed.paragraphs.length; p++) {
+      var sents = parsed.paragraphs[p];
+      if (!Array.isArray(sents) || sents.length === 0) continue;
 
-      if (dSents.length !== sSents.length) {
-        return showToast('❌ 第 ' + (p + 1) + ' 段句數不一致：原文 ' + dSents.length + ' 句，朗讀版 ' + sSents.length + ' 句，請檢查標點符號', true);
+      var cleanSents = [];
+      for (var i = 0; i < sents.length; i++) {
+        var item = sents[i];
+        if (!item || typeof item.d !== 'string' || typeof item.s !== 'string' || !item.d.trim() || !item.s.trim()) {
+          return showToast('❌ 第 ' + (p + 1) + ' 段第 ' + (i + 1) + ' 句缺少 d 或 s 欄位', true);
+        }
+        cleanSents.push({
+          d: item.d.replace(/\s+/g, ' ').trim(),
+          s: item.s.replace(/\s+/g, ' ').trim()
+        });
       }
 
-      if (dSents.length > 0) {
-        var pairedSents = [];
-        for (var i = 0; i < dSents.length; i++) {
-          pairedSents.push({ d: dSents[i], s: sSents[i] });
-        }
-        paragraphs.push(pairedSents);
+      if (cleanSents.length > 0) {
+        paragraphs.push(cleanSents);
         paragraphMistakes.push([]);
       }
     }
 
-    if (paragraphs.length === 0) return showToast('❌ 無法解析課文句子', true);
+    if (paragraphs.length === 0) return showToast('❌ 無法解析任何有效課文句子', true);
 
     currentSaveId = 'lesson_' + new Date().getTime();
     currentLessonTitle = rawTitle;
     currentLessonAudioDir = rawTitle;
-    currentLessonText = rawInput;
+    currentLessonText = JSON.stringify(parsed);
     currentLessonVoices = [getCurrentVoiceName()];
     currentLessonDate = new Date().getTime();
     currentParaIndex = 0;
@@ -1435,7 +1402,7 @@
   }
 
   // ==========================================
-  // 平行併發 TTS 生成 + 自動同步上 GitHub (全部針對朗讀版 s 及生字 w)
+  // 平行併發 TTS 生成 + 自動同步上 GitHub
   // ==========================================
   function checkAndDownloadAudio() {
     var vCfg = getCurrentVoiceConfig();
@@ -1636,7 +1603,6 @@
     }
   }
 
-  // 畫面渲染：文字顯示原文 item.d，播放按鈕綁定朗讀版 item.s
   function renderDictationList() {
     var container = document.getElementById('dictationList');
     container.innerHTML = '';
