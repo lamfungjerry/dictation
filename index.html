@@ -29,7 +29,7 @@
     label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin: 10px 0 4px; }
     select, input, textarea, button { width: 100%; font-size: 15px; border-radius: 8px; border: 1px solid var(--border); padding: 10px; }
     select, input[type="file"], input[type="number"], input[type="text"] { background: #fff; }
-    textarea { resize: vertical; min-height: 150px; line-height: 1.5; }
+    textarea { resize: vertical; min-height: 180px; line-height: 1.5; }
 
     button { background: var(--primary); color: #fff; border: none; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
     button:hover { background: var(--primary-hover); }
@@ -214,8 +214,8 @@
           <div id="ocrStatus" style="font-size: 12px; color: #2563eb; margin-top: 4px;"></div>
         </div>
         
-        <label style="margin-top:0;">課文內容 (首行 TITLE: 標題，空行分段)：</label>
-        <textarea id="newLessonInput" placeholder="TITLE: Chapter 1&#10;&#10;Today is Sunday comma we go to the park full stop"></textarea>
+        <label style="margin-top:0;">課文內容 (包含 TITLE、=== DISPLAY === 與 === SPOKEN ===)：</label>
+        <textarea id="newLessonInput" placeholder="TITLE: Chapter 1&#10;&#10;=== DISPLAY ===&#10;Today is Sunday, we go to the park.&#10;&#10;=== SPOKEN ===&#10;Today is Sunday comma we go to the park full stop"></textarea>
         
         <div class="row" style="margin-top:8px;">
           <button class="btn-warning col" onclick="breakdownTextAndDownload()">📝 儲存並下載</button>
@@ -469,6 +469,7 @@
   var currentLessonVoices = [];
   var currentLessonDate = 0;
 
+  // paragraphs 結構：[ [ { d: "顯示原文", s: "朗讀標點版" }, ... ], ... ]
   var paragraphs = []; 
   var paragraphMistakes = []; 
   var currentParaIndex = 0;
@@ -1043,8 +1044,12 @@
     var id = document.getElementById('cloudSaveSelect').value;
     if (!id) return showToast('請先選擇課文', true);
     var data = clientLessonsMap[id];
-    if (!data || !data.title || !data.audioDir || !data.paragraphs) {
-      return showToast('❌ 課文資料結構不完整，請先執行 migrate.html 升級', true);
+    if (!data || !data.title || !data.audioDir || !Array.isArray(data.paragraphs) || data.paragraphs.length === 0) {
+      return showToast('❌ 課文資料結構不完整，請刪除後重新新增', true);
+    }
+    var firstSent = data.paragraphs[0][0];
+    if (!firstSent || typeof firstSent !== 'object' || !firstSent.d || !firstSent.s) {
+      return showToast('❌ 此課文為舊格式，請刪除後以新版雙軌格式重新新增', true);
     }
 
     stopAudio();
@@ -1181,7 +1186,7 @@
   }
 
   // ==========================================
-  // 新增課文、複製 Prompt 與標點符號分句
+  // 新增課文、複製 Prompt 與雙軌分句 (DISPLAY 原文 + SPOKEN 朗讀)
   // ==========================================
   function copyOcrPrompt() {
     var promptStr = getCfgOcrPrompt();
@@ -1240,10 +1245,23 @@
     reader.readAsDataURL(fileInput.files[0]);
   }
 
-  function splitSentences(text) {
+  // 切分顯示原文 (保留稱謂縮寫如 Mr. / Dr. 不誤斷句)
+  function splitDisplaySentences(text) {
+    var safe = text.replace(/\b(Mr|Mrs|Ms|Dr|St)\./gi, "$1__ABBR_DOT__");
+    var processed = safe
+      .replace(/([.?!]["”'’]?)\s*(?=[A-Za-z0-9"“'‘])/g, "$1|")
+      .replace(/\n/g, "|");
+    return processed.split("|").map(function(s) {
+      return s.replace(/__ABBR_DOT__/g, ".").replace(/\s+/g, " ").trim();
+    }).filter(function(s) {
+      return s.length > 0;
+    });
+  }
+
+  // 切分朗讀文本 (按 full stop / question mark / exclamation mark 斷句)
+  function splitSpokenSentences(text) {
     var processed = text
       .replace(/\b((?:full stop|question mark|exclamation mark)(?:\s+close quotation mark)?)\b/gi, "$1|")
-      .replace(/([.?!])\s*(?=[A-Za-z0-9])/g, "$1|")
       .replace(/\n/g, "|");
     return processed.split("|").map(function(s) {
       return s.replace(/\s+/g, " ").trim();
@@ -1257,31 +1275,63 @@
     var rawInput = document.getElementById('newLessonInput').value.trim();
     if (!rawInput) return showToast('請先貼上或輸入課文', true);
 
-    var lines = rawInput.split(/\n/);
-    if (!lines[0].match(/^TITLE:\s*(.+)/i)) {
-      return showToast('❌ 格式錯誤：第一行必須以 TITLE: 開頭（例如 TITLE: Chapter 1）', true);
+    var titleMatch = rawInput.match(/^TITLE:\s*(.+)/im);
+    if (!titleMatch) {
+      return showToast('❌ 格式錯誤：缺少 TITLE: 標題行', true);
     }
-    var rawTitle = lines[0].replace(/^TITLE:\s*/i, '').trim();
-    var bodyText = lines.slice(1).join('\n').trim();
-    if (!rawTitle || !bodyText) return showToast('❌ 標題與課文內容不可為空', true);
+    var rawTitle = titleMatch[1].trim();
+    if (!rawTitle) return showToast('❌ 標題不可為空', true);
 
-    var rawParagraphs = bodyText.split(/\n\s*\n/); 
+    var parts = rawInput.split(/===\s*SPOKEN\s*===/i);
+    if (parts.length !== 2) {
+      return showToast('❌ 格式錯誤：必須同時包含 === DISPLAY === 與 === SPOKEN === 兩個區塊', true);
+    }
+
+    var displayHeaderSplit = parts[0].split(/===\s*DISPLAY\s*===/i);
+    if (displayHeaderSplit.length !== 2) {
+      return showToast('❌ 格式錯誤：找不到 === DISPLAY === 標記', true);
+    }
+
+    var displayBody = displayHeaderSplit[1].trim();
+    var spokenBody = parts[1].trim();
+    if (!displayBody || !spokenBody) {
+      return showToast('❌ DISPLAY 或 SPOKEN 內容不可為空', true);
+    }
+
+    var displayParas = displayBody.split(/\n\s*\n/);
+    var spokenParas = spokenBody.split(/\n\s*\n/);
+
+    if (displayParas.length !== spokenParas.length) {
+      return showToast('❌ 段落數量不一致：DISPLAY 有 ' + displayParas.length + ' 段，SPOKEN 有 ' + spokenParas.length + ' 段', true);
+    }
+
     paragraphs = [];
     paragraphMistakes = [];
-    rawParagraphs.forEach(function(pText) {
-      var sents = splitSentences(pText);
-      if (sents.length > 0) {
-        paragraphs.push(sents);
-        paragraphMistakes.push([]); 
+
+    for (var p = 0; p < displayParas.length; p++) {
+      var dSents = splitDisplaySentences(displayParas[p]);
+      var sSents = splitSpokenSentences(spokenParas[p]);
+
+      if (dSents.length !== sSents.length) {
+        return showToast('❌ 第 ' + (p + 1) + ' 段句數不一致：原文 ' + dSents.length + ' 句，朗讀版 ' + sSents.length + ' 句，請檢查標點符號', true);
       }
-    });
+
+      if (dSents.length > 0) {
+        var pairedSents = [];
+        for (var i = 0; i < dSents.length; i++) {
+          pairedSents.push({ d: dSents[i], s: sSents[i] });
+        }
+        paragraphs.push(pairedSents);
+        paragraphMistakes.push([]);
+      }
+    }
 
     if (paragraphs.length === 0) return showToast('❌ 無法解析課文句子', true);
 
     currentSaveId = 'lesson_' + new Date().getTime();
     currentLessonTitle = rawTitle;
     currentLessonAudioDir = rawTitle;
-    currentLessonText = bodyText;
+    currentLessonText = rawInput;
     currentLessonVoices = [getCurrentVoiceName()];
     currentLessonDate = new Date().getTime();
     currentParaIndex = 0;
@@ -1385,7 +1435,7 @@
   }
 
   // ==========================================
-  // 平行併發 TTS 生成 + 自動同步上 GitHub
+  // 平行併發 TTS 生成 + 自動同步上 GitHub (全部針對朗讀版 s 及生字 w)
   // ==========================================
   function checkAndDownloadAudio() {
     var vCfg = getCurrentVoiceConfig();
@@ -1397,15 +1447,19 @@
     }
     if (!audioStateMap[voiceKey]) audioStateMap[voiceKey] = {};
 
-    var allTexts = [];
+    var allSpokenTexts = [];
     for (var p = 0; p < paragraphs.length; p++) {
       var sents = paragraphs[p] || [];
-      sents.forEach(function(s) { if (allTexts.indexOf(s) === -1) allTexts.push(s); });
+      sents.forEach(function(item) {
+        if (allSpokenTexts.indexOf(item.s) === -1) allSpokenTexts.push(item.s);
+      });
       var msts = paragraphMistakes[p] || [];
-      msts.forEach(function(w) { if (allTexts.indexOf(w) === -1) allTexts.push(w); });
+      msts.forEach(function(w) {
+        if (allSpokenTexts.indexOf(w) === -1) allSpokenTexts.push(w);
+      });
     }
 
-    if (allTexts.length === 0) return;
+    if (allSpokenTexts.length === 0) return;
 
     google.script.run
       .withSuccessHandler(function(res) {
@@ -1430,7 +1484,7 @@
       .withFailureHandler(function(err) {
         showToast('❌ 檢查 GitHub 音檔失敗：' + err, true);
       })
-      .getLessonAudioStatus(currentLessonAudioDir, voiceKey, allTexts, getCfgRepo(), getCfgBranch());
+      .getLessonAudioStatus(currentLessonAudioDir, voiceKey, allSpokenTexts, getCfgRepo(), getCfgBranch());
   }
 
   function enqueueMissingTts(voiceKey, langCode) {
@@ -1439,10 +1493,10 @@
     for (var p = 0; p < paragraphs.length; p++) {
       var currentSents = paragraphs[p] || [];
       for (var i = 0; i < currentSents.length; i++) {
-        var s = currentSents[i];
-        var st = audioStateMap[voiceKey][s];
+        var spoken = currentSents[i].s;
+        var st = audioStateMap[voiceKey][spoken];
         if (st && (st.source === 'github' || st.base64)) continue;
-        if (pendingTtsQueue.indexOf(s) === -1) pendingTtsQueue.push(s);
+        if (pendingTtsQueue.indexOf(spoken) === -1) pendingTtsQueue.push(spoken);
       }
       var msts = paragraphMistakes[p] || [];
       for (var k = 0; k < msts.length; k++) {
@@ -1541,28 +1595,28 @@
     }
   }
 
-  function getPlayButtonConfig(text) {
+  function getPlayButtonConfig(spokenText) {
     var voiceKey = getCurrentVoiceName();
-    var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][text];
+    var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][spokenText];
     if (st && (st.source === 'github' || st.base64)) {
       return { className: 'btn-play-line', html: '▶️ 播放' };
     }
     return { className: 'btn-play-line btn-fallback', html: '⏳ 播放' };
   }
 
-  function updateRowButtonUI(text) {
-    var cfg = getPlayButtonConfig(text);
+  function updateRowButtonUI(spokenText) {
+    var cfg = getPlayButtonConfig(spokenText);
     var btns = document.querySelectorAll('button[data-text]');
     for (var i = 0; i < btns.length; i++) {
-      if (btns[i].getAttribute('data-text') === text) {
+      if (btns[i].getAttribute('data-text') === spokenText) {
         btns[i].className = cfg.className;
         btns[i].innerHTML = cfg.html;
       }
     }
   }
 
-  function getPlayableAudioSrc(voiceKey, text) {
-    var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][text];
+  function getPlayableAudioSrc(voiceKey, spokenText) {
+    var st = audioStateMap[voiceKey] && audioStateMap[voiceKey][spokenText];
     if (!st) return null;
     if (st.source === 'github' && st.url) return st.url;
     if (st.base64) return "data:audio/mp3;base64," + st.base64;
@@ -1582,6 +1636,7 @@
     }
   }
 
+  // 畫面渲染：文字顯示原文 item.d，播放按鈕綁定朗讀版 item.s
   function renderDictationList() {
     var container = document.getElementById('dictationList');
     container.innerHTML = '';
@@ -1599,6 +1654,9 @@
     }
 
     for (var i = 0; i < currentSents.length; i++) {
+      var displayStr = currentSents[i].d;
+      var spokenStr = currentSents[i].s;
+
       var row = document.createElement('div');
       row.className = 'sentence-row';
       row.id = 'dict-row-' + i; 
@@ -1611,13 +1669,13 @@
       row.appendChild(idxSpan);
 
       var btn = document.createElement('button');
-      var btnCfg = getPlayButtonConfig(currentSents[i]);
+      var btnCfg = getPlayButtonConfig(spokenStr);
       btn.className = btnCfg.className;
       btn.innerHTML = btnCfg.html;
-      btn.setAttribute('data-text', currentSents[i]); 
-      btn.onclick = (function(idx, rowEl) { 
-        return function(e) { e.stopPropagation(); playSingleText(currentSents[idx], rowEl, false); }; 
-      })(i, row);
+      btn.setAttribute('data-text', spokenStr); 
+      btn.onclick = (function(sText, rowEl) { 
+        return function(e) { e.stopPropagation(); playSingleText(sText, rowEl, false); }; 
+      })(spokenStr, row);
       row.appendChild(btn);
 
       var txtContainer = document.createElement('span');
@@ -1628,7 +1686,7 @@
         }
       };
       
-      var words = currentSents[i].split(/(\s+)/);
+      var words = displayStr.split(/(\s+)/);
       words.forEach(function(w) {
         if (w.trim().length === 0) {
           txtContainer.appendChild(document.createTextNode(w));
@@ -1824,7 +1882,7 @@
     clearPlayingHighlight(); 
   }
 
-  function playSingleText(textToPlay, rowElement, isMistakeMode) {
+  function playSingleText(spokenTextToPlay, rowElement, isMistakeMode) {
     stopAudio(); 
     var speed = globalSpeedValue; 
     var vCfg = getCurrentVoiceConfig();
@@ -1837,7 +1895,7 @@
     }
     
     var onEnd = function() { clearPlayingHighlight(); currentlyPlayingRowId = null; currentAudio = null; };
-    var audioSrc = getPlayableAudioSrc(voiceKey, textToPlay);
+    var audioSrc = getPlayableAudioSrc(voiceKey, spokenTextToPlay);
 
     if (audioSrc) {
       currentAudio = sharedAudio;
@@ -1851,7 +1909,7 @@
       return;
     }
 
-    var utter = new SpeechSynthesisUtterance(textToPlay);
+    var utter = new SpeechSynthesisUtterance(spokenTextToPlay);
     utter.lang = vCfg.langCode;
     var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
     if (enV.length > 0) utter.voice = enV[0];
@@ -1860,7 +1918,7 @@
     utter.onerror = onEnd;
     window.speechSynthesis.speak(utter);
     
-    autoDownloadWord(textToPlay);
+    autoDownloadWord(spokenTextToPlay);
   }
 
   function startContinuousPlay(isMistakeMode) {
@@ -1873,7 +1931,7 @@
     } else {
       var currentSents = paragraphs[currentParaIndex] || [];
       if (currentSents.length === 0) return showToast('請先讀取或新增課文', true);
-      continuousPlayList = currentSents;
+      continuousPlayList = currentSents.map(function(item) { return item.s; });
     }
     
     if (window.speechSynthesis) {
@@ -1908,7 +1966,7 @@
     var pauseVal = parseFloat(document.getElementById('pauseContinuous').value);
     if (isNaN(pauseVal) || pauseVal < 0) return showToast('❌ 連播停頓秒數無效', true);
     var pauseMs = pauseVal * 1000;
-    var textToPlay = continuousPlayList[continuousIndex];
+    var spokenTextToPlay = continuousPlayList[continuousIndex];
     var vCfg = getCurrentVoiceConfig();
     var voiceKey = vCfg.voiceName;
 
@@ -1927,10 +1985,10 @@
       currentAudio = null;
     };
 
-    var audioSrc = getPlayableAudioSrc(voiceKey, textToPlay);
+    var audioSrc = getPlayableAudioSrc(voiceKey, spokenTextToPlay);
 
     if (!audioSrc) {
-      var utter = new SpeechSynthesisUtterance(textToPlay);
+      var utter = new SpeechSynthesisUtterance(spokenTextToPlay);
       utter.lang = vCfg.langCode;
       var enV = nativeVoices.filter(function(v) { return v.lang.indexOf('en') === 0; });
       if (enV.length > 0) utter.voice = enV[0];
@@ -1938,7 +1996,7 @@
       utter.onend = onEndFn;
       utter.onerror = onErrorFn;
       window.speechSynthesis.speak(utter);
-      autoDownloadWord(textToPlay);
+      autoDownloadWord(spokenTextToPlay);
     } else {
       currentAudio = sharedAudio;
       sharedAudio.onended = onEndFn;
