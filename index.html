@@ -147,7 +147,7 @@
 <div class="container">
   <header>
     <button class="key-btn" onclick="openKeyModal()">🔑</button>
-    <h1 style="font-size:22px; margin-bottom:4px;">📖 英語讀默溫習系統</h1>
+    <h1 style="font-size:22px; margin-bottom:4px;" onclick="window.safeBack()">📖 英語讀默溫習系統</h1>
     <button class="settings-btn" onclick="document.getElementById('settingsModal').style.display='flex'">⚙️</button>
   </header>
 
@@ -1994,6 +1994,11 @@
     function populate() { nativeVoices = window.speechSynthesis.getVoices(); }
     if (window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = populate; populate(); }
   }
+
+  // 防跳出外部網站的安全返回機制
+  window.safeBack = function() {
+    if (document.referrer && document.referrer.startsWith(window.location.origin)) { history.back(); }
+  };
 </script>
 </body>
 </html>
