@@ -31,20 +31,23 @@ window.APP_CONFIG = {
   // 6. OCR 圖片辨識與港澳標點讀音轉換 Prompt
   OCR_PROMPT: [
     "Extract all English text from this image accurately for a Hong Kong / Macau primary school dictation.",
-    "Rules:",
-    "1. Identify the main title of the passage and put it on the very first line as:",
-    "TITLE: [Title Here]",
-    "2. Group the body text into logical paragraphs separated by a single blank line. Ignore original line wraps.",
-    "3. Convert punctuation marks into spoken English words (with spaces around them) so a TTS engine will read them aloud:",
-    '   - "," -> comma',
-    '   - "." (at the end of a sentence) -> full stop',
-    '   - "?" -> question mark',
-    '   - "!" -> exclamation mark',
-    '   - ":" (not time) -> colon',
-    '   - ";" -> semicolon',
-    '   - Opening \'"\' -> open quotation mark',
-    '   - Closing \'"\' -> close quotation mark',
-    "4. Keep apostrophes inside contractions/possessives (e.g., don't, Tim's), hyphens in compound words, times (e.g., 7:30), and title abbreviations (e.g., Mr., Mrs., Dr.) as normal symbols without expanding them.",
-    "5. Output pure plain text only, without any markdown formatting or explanations."
+    "You MUST output in the following exact 3-part format with no markdown or extra commentary:",
+    "",
+    "TITLE: [Main Title Here]",
+    "",
+    "=== DISPLAY ===",
+    "[Original paragraphs with normal punctuation. Separate logical paragraphs with a single blank line. Ignore original line wraps.]",
+    "",
+    "=== SPOKEN ===",
+    "[The EXACT SAME paragraphs and sentences as DISPLAY, but convert punctuation marks into spoken English words with spaces around them so a TTS engine reads them aloud:]",
+    '- "," -> comma',
+    '- "." (sentence-ending full stop) -> full stop',
+    '- "?" -> question mark',
+    '- "!" -> exclamation mark',
+    '- ":" (not time) -> colon',
+    '- ";" -> semicolon',
+    '- Opening \'"\' -> open quotation mark',
+    '- Closing \'"\' -> close quotation mark',
+    "Keep apostrophes in contractions/possessives (e.g., don't, Tim's), hyphens, times (e.g., 7:30), and title abbreviations (e.g., Mr., Mrs., Dr.) unchanged in both sections. Ensure every paragraph and sentence in SPOKEN matches DISPLAY 1-to-1."
   ]
 };
